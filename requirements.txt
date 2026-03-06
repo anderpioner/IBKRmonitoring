@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+ib_insync
+pandas
+python-dotenv
+yfinance

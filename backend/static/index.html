@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBKR Risk Monitor</title>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide React (UMD) -->
+    <script src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.js"></script>
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e3a8a;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Robust icon handling
+        const Lucide = window.lucideReact || window.LucideReact || {};
+        const IconProxy = new Proxy(Lucide, {
+            get: (target, prop) => {
+                if (target[prop]) return target[prop];
+                // Fallback icon component
+                return (props) => (
+                    <div className={props.className || "w-4 h-4"}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                    </div>
+                );
+            }
+        });
+
+        const {
+            Shield, Activity, TrendingUp, ShieldCheck, Settings, RefreshCcw,
+            Power, Info, ArrowUpRight, ArrowDownRight, Wallet, Zap,
+            Cpu, BarChart3, ChevronDown, AlertOctagon, Network, Circle
+        } = IconProxy;
+
+        const SafeIcon = ({ icon: IconComponent, ...props }) => {
+            if (!IconComponent) return <div className="w-4 h-4 bg-blue-500/10 rounded" />;
+            return <IconComponent {...props} />;
+        };
+
+        const StatCard = ({ title, value, subValue, icon: Icon, tooltip, color = 'blue', badge }) => {
+            const colors = {
+                blue: { bg: 'bg-blue-500/15', text: 'text-blue-400', glow: 'shadow-blue-500/20' },
+                cyan: { bg: 'bg-cyan-500/15', text: 'text-cyan-400', glow: 'shadow-cyan-500/20' },
+                indigo: { bg: 'bg-indigo-500/15', text: 'text-indigo-400', glow: 'shadow-indigo-500/20' },
+                amber: { bg: 'bg-amber-500/15', text: 'text-amber-400', glow: 'shadow-amber-500/20' },
+                emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', glow: 'shadow-emerald-500/20' },
+                violet: { bg: 'bg-violet-500/15', text: 'text-violet-400', glow: 'shadow-violet-500/20' },
+            };
+            const c = colors[color] || colors.blue;
+            return (
+                <div className="bg-[#0f172a] border border-blue-900/30 p-5 rounded-2xl hover:border-blue-700/40 transition-all shadow-lg group relative h-full flex flex-col justify-between">
+                    <div>
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-blue-300/60 text-[10px] font-bold uppercase tracking-wider">{title}</span>
+                                {tooltip && <Info className="w-3 h-3 text-blue-900 group-hover:text-blue-500 cursor-help transition-colors" />}
+                            </div>
+                            {Icon && (
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${c.bg} shadow-lg ${c.glow} group-hover:scale-110 transition-transform`}>
+                                    <Icon className={`w-4 h-4 ${c.text}`} />
+                                </div>
+                            )}
+                        </div>
+                        <div className="text-2xl font-semibold text-blue-50">{value}</div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 min-h-[16px]">
+                        <div className={`text-[11px] flex items-center font-medium ${subValue ? (subValue.startsWith('-') ? 'text-blue-400/60' : 'text-cyan-400') : ''}`}>
+                            {subValue && (
+                                <>
+                                    {subValue.startsWith('-') ? <ArrowDownRight className="w-3 h-3 mr-1" /> : <ArrowUpRight className="w-3 h-3 mr-1" />}
+                                    {subValue}
+                                </>
+                            )}
+                        </div>
+                        {badge}
+                    </div>
+                    {tooltip && (
+                        <div className="absolute bottom-full left-0 mb-2 w-64 z-50 hidden group-hover:block">
+                            <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                {tooltip}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        function App() {
+            const [sidebarOpen, setSidebarOpen] = useState(true);
+            const [autoRefresh, setAutoRefresh] = useState(true);
+            const [refreshInterval, setRefreshInterval] = useState(30);
+            const [baseline, setBaseline] = useState(83000);
+            const [port, setPort] = useState(7496);
+            const [clientId, setClientId] = useState(10);
+            const [connectionStatus, setConnectionStatus] = useState(false);
+            const [connectedClientId, setConnectedClientId] = useState(null);
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [refreshing, setRefreshing] = useState(false);
+            const [maPeriod, setMaPeriod] = useState(20);
+            const [accountId, setAccountId] = useState("U2753907");
+            const [error, setError] = useState(null);
+
+            const maPeriodRef = useRef(20);
+            const accountIdRef = useRef("U2753907");
+            const refreshingRef = useRef(false);
+            const refreshTimeoutRef = useRef(null);
+
+            const API_BASE = "http://localhost:8000/api";
+
+            // Check connection on load
+            useEffect(() => {
+                checkStatus();
+                const interval = setInterval(checkStatus, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            // Initial fetch when connection becomes active
+            useEffect(() => {
+                if (connectionStatus && !data) {
+                    fetchData();
+                }
+            }, [connectionStatus]);
+
+            // Auto-refresh: restarts whenever any config changes
+            useEffect(() => {
+                if (autoRefresh && connectionStatus) {
+                    const interval = setInterval(() => fetchData(), refreshInterval * 1000);
+                    return () => clearInterval(interval);
+                }
+            }, [autoRefresh, refreshInterval, connectionStatus]);
+
+            const checkStatus = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/status`);
+                    const info = await res.json();
+                    setConnectionStatus(info.connected);
+                    setConnectedClientId(info.client_id);
+                } catch (e) {
+                    setConnectionStatus(false);
+                }
+            };
+
+            const connectIB = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`${API_BASE}/connect`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ host: "127.0.0.1", port: parseInt(port), clientId: parseInt(clientId) })
+                    });
+                    if (res.ok) {
+                        setConnectionStatus(true);
+                        // Await the initial fetch
+                        const fetchSuccess = await fetchData(true);
+                        if (!fetchSuccess) {
+                            // If the initial fetch fails (e.g. invalid account), auto-disconnect
+                            await disconnectIB();
+                        }
+                    } else {
+                        const err = await res.json();
+                        alert(err.detail);
+                    }
+                } catch (e) {
+                    alert("Failed to connect to backend");
+                }
+                setLoading(false);
+            };
+
+            const disconnectIB = async () => {
+                await fetch(`${API_BASE}/disconnect`, { method: 'POST' });
+                setConnectionStatus(false);
+                setData(null);
+            };
+
+            // Regular fetch — skips if one is already in progress (used by interval)
+            const fetchData = async (force = false) => {
+                if (refreshingRef.current && !force) return false;
+                refreshingRef.current = true;
+                setRefreshing(true);
+                let success = false;
+                try {
+                    const res = await fetch(`${API_BASE}/data`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        // Always uses the REF so interval closures never capture stale value
+                        body: JSON.stringify({ accountId: accountIdRef.current, maPeriod: maPeriodRef.current })
+                    });
+                    if (res.ok) {
+                        setData(await res.json());
+                        setError(null);
+                        success = true;
+                    }
+                    else {
+                        const err = await res.json();
+                        setError(err.detail);
+                    }
+                } catch (e) { setError("Lost connection to backend"); }
+                finally {
+                    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+                    refreshTimeoutRef.current = setTimeout(() => {
+                        refreshingRef.current = false;
+                        setRefreshing(false);
+                    }, 400);
+                }
+                return success;
+            };
+
+            // Force fetch with a specific period — safely resets the lock
+            const forceFetch = async (period) => {
+                maPeriodRef.current = period;  // update ref immediately, before fetch
+                setMaPeriod(period);           // update state for display
+                refreshingRef.current = true;
+                setRefreshing(true);
+                try {
+                    const res = await fetch(`${API_BASE}/data`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accountId: accountIdRef.current, maPeriod: period })
+                    });
+                    if (res.ok) { setData(await res.json()); setError(null); }
+                    else { const err = await res.json(); setError(err.detail); }
+                } catch (e) { setError("Lost connection to backend"); }
+                finally {
+                    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+                    refreshTimeoutRef.current = setTimeout(() => {
+                        refreshingRef.current = false;
+                        setRefreshing(false);
+                    }, 400);
+                }
+            };
+
+            const coverage = data ? (data.openRisk / data.thresholdGains * 100) : 0;
+            const buffer = data ? (data.thresholdGains - data.openRisk) : 0;
+
+            // Helper to strictly format ALL numbers to exactly 2 decimal places
+            const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const pctOfTm = (val) => data && data.totalMoney ? `${(val / data.totalMoney * 100).toFixed(2)}% [% of TM]` : null;
+
+            return (
+                <div className="min-h-screen bg-[#020617] text-slate-300 font-sans selection:bg-blue-500/30">
+                    {/* Sidebar */}
+                    <aside className={`fixed left-0 top-0 h-full bg-[#070a13] border-r border-blue-900/20 transition-all duration-300 z-50 flex flex-col ${sidebarOpen ? 'w-72' : 'w-20'}`}>
+                        <div className="p-6 flex items-center gap-3 border-b border-blue-900/10 shrink-0">
+                            <div className="bg-blue-600/20 p-2 rounded-lg cursor-pointer" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                                <SafeIcon icon={Shield} className="w-6 h-6 text-blue-400" />
+                            </div>
+                            {sidebarOpen && <span className="font-bold text-lg tracking-tight text-blue-50 uppercase italic">Navigator</span>}
+                        </div>
+
+                        <div className="p-4 space-y-6 flex-grow custom-scrollbar relative">
+                            {sidebarOpen && (
+                                <>
+                                    <div className="space-y-1 px-1">
+                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Baseline ($)</label>
+                                        <input type="number" value={baseline} onChange={(e) => setBaseline(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                    </div>
+                                    <div className="space-y-1 px-1">
+                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">IBKR Port</label>
+                                        <input type="number" value={port} onChange={(e) => setPort(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                        <div className="flex gap-2 mt-1">
+                                            <button onClick={() => setPort(7496)} className="text-[8px] text-blue-400 hover:text-blue-200">Live (7496)</button>
+                                            <button onClick={() => setPort(7497)} className="text-[8px] text-blue-400 hover:text-blue-200">Paper (7497)</button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 px-1">
+                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Client ID</label>
+                                        <input type="number" value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                        {connectionStatus && connectedClientId !== null && (
+                                            <div className="text-[9px] text-cyan-400 mt-1 uppercase font-bold">Active ID: {connectedClientId}</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1 px-1">
+                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Account ID</label>
+                                        <input type="text" value={accountId} onChange={(e) => { setAccountId(e.target.value); accountIdRef.current = e.target.value; }} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                    </div>
+                                    <div className="space-y-3 bg-blue-950/10 p-3 rounded-xl border border-blue-900/10">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-blue-200/70">Auto-Refresh</span>
+                                            <button onClick={() => { setAutoRefresh(!autoRefresh); if (!autoRefresh && connectionStatus) fetchData(); }} className={`w-8 h-4 rounded-full relative transition-colors ${autoRefresh ? 'bg-blue-600' : 'bg-slate-800'}`}>
+                                                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRefresh ? 'right-0.5' : 'left-0.5'}`} />
+                                            </button>
+                                        </div>
+                                        <input type="range" min="5" max="60" value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-full h-1 bg-blue-950 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                        <div className="flex justify-between text-[9px] text-blue-500/50 font-bold">
+                                            <span className="uppercase">Interval</span>
+                                            <span>{refreshInterval}s</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 px-1">
+                                        <div className="relative group inline-flex items-center gap-1.5 cursor-help">
+                                            <span className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Threshold Gains MA</span>
+                                            <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
+                                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-64 z-50 hidden group-hover:block">
+                                                <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                    The backend logic is configured to choose the tighter of your Stop Price and your Moving Average (MA) as the effective exit point for calculating metrics.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {[10, 20].map(p => (
+                                                <button key={p}
+                                                    onClick={() => { if (p !== maPeriod) forceFetch(p); }}
+                                                    disabled={refreshing && p === maPeriod}
+                                                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase border transition-all ${maPeriod === p
+                                                        ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+                                                        : 'bg-blue-950/20 border-blue-900/20 text-blue-500/50 hover:text-blue-300'
+                                                        }`}>
+                                                    MA{p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={connectIB} disabled={loading || connectionStatus} className={`flex items-center justify-center gap-2 bg-blue-600/20 border border-blue-600/40 py-2 rounded-lg text-[10px] font-bold text-blue-400 transition-all uppercase ${(!connectionStatus && !loading) ? 'hover:bg-blue-600/30' : 'opacity-50'} ${connectionStatus ? 'col-span-1' : 'col-span-2'}`}>
+                                            <Zap className="w-3 h-3" /> {loading ? "Connecting..." : (connectionStatus ? "Connected" : "Connect")}
+                                        </button>
+                                        {connectionStatus && (
+                                            <button onClick={disconnectIB} className="col-span-1 flex items-center justify-center gap-2 bg-red-950/10 border border-red-900/20 py-2 rounded-lg text-[10px] font-bold text-red-500/60 hover:bg-red-900/20 transition-all uppercase">
+                                                <SafeIcon icon={Power} className="w-3 h-3" /> Off
+                                            </button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-20'} p-8 max-w-[1600px] mx-auto`}>
+                        <header className="flex justify-between items-center mb-10 relative z-20">
+                            <div className="flex items-center gap-4">
+                                <div className="w-1 h-10 bg-gradient-to-b from-blue-600 to-cyan-400 rounded-full" />
+                                <div>
+                                    <h1 className="text-2xl font-semibold text-blue-50 tracking-tight">Risk Monitor</h1>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <Network className={`w-3 h-3 ${connectionStatus ? 'text-cyan-400' : 'text-red-500'}`} />
+                                        <span className="text-blue-400/50 text-[10px] font-bold uppercase tracking-[0.2em]">
+                                            {connectionStatus ? "Live IBKR Stream Active" : "Disconnected"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                {connectionStatus && (
+                                    <button onClick={(e) => { e.preventDefault(); console.log('Refresh manually triggered via UI'); fetchData(true); }} className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-xl text-[10px] font-bold uppercase transition-all select-none active:scale-95 ${refreshing ? 'bg-blue-600/20 border-blue-500/40 text-blue-300 cursor-wait' : 'bg-blue-950/30 border-blue-900/40 text-blue-400 hover:bg-blue-900/40 hover:text-blue-200 cursor-pointer'}`}>
+                                        <SafeIcon icon={RefreshCcw} className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Fetching...' : 'Refresh'}
+                                    </button>
+                                )}
+                                <div className="text-right">
+                                    <span className="text-[9px] font-bold text-blue-500/40 uppercase block">Last Update</span>
+                                    <span className="text-xs font-mono text-blue-300">{data ? data.lastUpdate : "--:--:--"}</span>
+                                </div>
+                            </div>
+                        </header>
+
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center gap-3">
+                                <AlertOctagon className="w-5 h-5" /> {error}
+                            </div>
+                        )}
+
+                        {/* Risk Overview */}
+                        <section className="mb-10 relative">
+                            <div className="bg-[#0f172a] border border-blue-900/30 rounded-3xl p-8 relative shadow-2xl">
+                                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 blur-[100px] pointer-events-none -mr-32 -mt-32" />
+                                <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                                    <div className="lg:col-span-4 border-r border-blue-900/10 pr-12">
+                                        <div className="flex items-center gap-2 text-blue-400/40 mb-4 font-bold text-[10px] tracking-[0.25em] uppercase">
+                                            <Cpu className="w-4 h-4" /> System Risk Monitor
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <div className="text-blue-500/60 text-[10px] font-bold uppercase tracking-widest">Open Risk</div>
+                                            </div>
+                                            <div className="text-5xl font-light text-blue-50 tracking-tighter">
+                                                ${data ? formatVal(data.openRisk) : "0.00"}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="lg:col-span-8 grid grid-cols-2 gap-8">
+                                        <div>
+                                            <div className="text-blue-500/40 text-[10px] font-bold uppercase tracking-widest">Threshold Gains</div>
+                                            <div className="text-2xl font-medium text-blue-100">
+                                                ${data ? formatVal(data.thresholdGains) : "0.00"}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="relative group inline-flex items-center justify-end w-full gap-1.5 cursor-help">
+                                                <div className="absolute right-0 bottom-full mb-2 w-64 z-50 text-left hidden group-hover:block">
+                                                    <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                        Threshold Gains minus Open Risk. A positive buffer means locked-in profits exceed current risk.
+                                                    </div>
+                                                </div>
+                                                <span className="text-blue-500/40 text-[10px] font-bold uppercase tracking-widest">Safety Buffer</span>
+                                                <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
+                                            </div>
+                                            <div className={`text-2xl font-medium ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
+                                                ${formatVal(buffer)}
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-2 space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <div className="relative group inline-flex items-center gap-1.5 cursor-help">
+                                                    <span className="text-[10px] font-bold text-blue-500/50 uppercase tracking-widest">Risk Coverage Ratio</span>
+                                                    <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
+                                                    <div className="absolute left-0 bottom-full mb-2 w-64 z-50 hidden group-hover:block">
+                                                        <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                            (Open Risk / Threshold Gains). The percentage of stable profits currently at risk in the market.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-sm font-medium text-blue-100">{formatVal(coverage)}%</span>
+                                            </div>
+                                            <div className="relative h-2.5 bg-blue-950 rounded-full overflow-hidden border border-blue-900/30 p-[1px]">
+                                                <div className={`h-full bg-gradient-to-r from-blue-900 via-blue-600 to-cyan-400 rounded-full transition-all duration-1000`} style={{ width: `${Math.min(100, coverage)}%` }} />
+                                            </div>
+                                            <div className="flex justify-between text-[8px] font-bold text-blue-500/30 uppercase tracking-[0.2em]">
+                                                <span>Safe</span>
+                                                <span>Caution (50%)</span>
+                                                <span className="text-blue-400">Defense (100%)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Cards */}
+                        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+                            {/* Left Side */}
+                            <div className="flex flex-col gap-6">
+                                <StatCard color="blue" title="Total Money [TM]" value={data ? `$${formatVal(data.totalMoney)}` : "$--"} subValue={data ? pctOfTm(data.totalMoney) : null} icon={Circle} tooltip="The current total value of your account, representing the sum of your Principal State and your Growth State." badge={data && data.weightedAdr > 0 ? <div className="px-2 py-0.5 rounded border border-purple-500/20 bg-purple-500/10 text-purple-300/80 text-[9px] font-bold tracking-widest uppercase" title="Weighted Average Daily Range (20 days)">WT ADR {formatVal(data.weightedAdr)}%</div> : null} />
+                                <div className="grid grid-cols-2 gap-6">
+                                    <StatCard color="blue" title="Principal State" value={data ? `$${formatVal(data.principalState)}` : "$--"} subValue={data ? pctOfTm(data.principalState) : null} icon={Circle} tooltip='The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.' />
+                                    <StatCard color="blue" title="Open Risk" value={data ? `$${formatVal(data.openRisk)}` : "$--"} subValue={data ? pctOfTm(data.openRisk) : null} icon={Circle} tooltip="The total dollar amount at risk across all positions where stops are not yet at breakeven, plus any fresh risk from new entries." />
+                                </div>
+                            </div>
+
+                            {/* Right Side */}
+                            <div className="flex flex-col gap-6">
+                                <StatCard color="emerald" title="Growth State" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfTm(data.growthState) : null} icon={Circle} tooltip="Unrealized PnL — the total floating profit or loss across all open positions." />
+                                <div className="grid grid-cols-2 gap-6">
+                                    <StatCard color="emerald" title="Threshold Gains" value={data ? `$${formatVal(data.thresholdGains)}` : "$--"} subValue={data ? pctOfTm(data.thresholdGains) : null} icon={Circle} tooltip={`The portion of your unrealized profits that are "stable" because they are protected by your current stop-loss levels. Calculated using MA${maPeriod}.`} />
+                                    <StatCard color="emerald" title="Dynamic Gains" value={data ? `$${formatVal(data.dynamicGains)}` : "$--"} subValue={data ? pctOfTm(data.dynamicGains) : null} icon={Circle} tooltip='The fluid portion of your profits that fluctuates with market volatility and has not yet been "locked in" by a protective stop.' />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Positions Table */}
+                        <section>
+                            <div className="bg-[#0f172a] border border-blue-900/20 rounded-2xl shadow-2xl">
+                                <div>
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-blue-950/20 border-b border-blue-900/10">
+                                                <th className="px-6 py-4 text-[10px] font-bold text-blue-50 uppercase">Symbol</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">Pos</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">Avg Cost</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-blue-50 uppercase text-right">Price</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-amber-400/80 uppercase text-right">Stop</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-purple-400/80 uppercase text-right" title="Average Daily Range (20 days)">ADR</th>
+
+                                                <th className={`px-6 py-4 text-[10px] font-bold uppercase text-right ${maPeriod === 10 ? 'text-cyan-400' : 'text-blue-400/40'}`}>MA10</th>
+                                                <th className={`px-6 py-4 text-[10px] font-bold uppercase text-right ${maPeriod === 20 ? 'text-cyan-400' : 'text-blue-400/40'}`}>MA20</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-cyan-400 uppercase text-right">PnL</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-blue-400/80 uppercase text-right">Risk</th>
+                                                <th className="px-6 py-4 text-right">
+                                                    <div className="relative group inline-flex items-center justify-end w-full gap-1.5 cursor-help">
+                                                        <div className="absolute right-0 bottom-full mb-2 w-64 z-50 text-left hidden group-hover:block whitespace-normal font-normal">
+                                                            <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                                The backend logic is configured to choose the tighter of your Stop Price and your Moving Average (MA) as the effective exit point for calculating metrics.
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">T-Gain</span>
+                                                        <SafeIcon icon={Info} className="w-3 h-3 text-slate-500 group-hover:text-blue-500 transition-colors" />
+                                                    </div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-blue-900/5 text-sm">
+                                            {data && data.positions.map((pos) => (
+                                                <tr key={pos.symbol} className="hover:bg-blue-900/10 transition-colors group">
+                                                    <td className="px-6 py-4 font-bold text-blue-50">{pos.symbol}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">{pos.pos.toLocaleString('en-US')}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">${formatVal(pos.avgCost)}</td>
+                                                    <td className="px-6 py-4 text-right text-blue-50">${formatVal(pos.price)}</td>
+                                                    <td className="px-6 py-4 text-right font-mono">
+                                                        {pos.stop ? (
+                                                            <span className="text-amber-400/80">${formatVal(pos.stop)}</span>
+                                                        ) : (
+                                                            <span className="text-cyan-400/80 font-semibold" title={`Using MA${maPeriod} as fallback stop`}>MA{maPeriod}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-mono text-purple-400/80">{pos.adr ? `${formatVal(pos.adr)}%` : '--'}</td>
+
+                                                    <td className={`px-6 py-4 text-right font-mono ${maPeriod === 10 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma10 ? `$${formatVal(pos.ma10)}` : '--'}</td>
+                                                    <td className={`px-6 py-4 text-right font-mono ${maPeriod === 20 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma20 ? `$${formatVal(pos.ma20)}` : '--'}</td>
+                                                    <td className={`px-6 py-4 text-right font-semibold ${pos.pnl > 0 ? 'text-cyan-400' : 'text-blue-400/60'}`}>
+                                                        ${formatVal(pos.pnl)}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-bold text-blue-400/80">${formatVal(pos.risk)}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">${formatVal(pos.tGain)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {!data && <div className="p-12 text-center text-blue-900 font-bold uppercase tracking-widest">No Active Connection</div>}
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* FAQ Section */}
+                        <section className="mt-8">
+                            <div className="bg-[#0f172a] border border-blue-900/20 rounded-2xl overflow-hidden shadow-2xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <SafeIcon icon={Info} className="w-5 h-5 text-blue-400" />
+                                    <h2 className="text-lg font-semibold text-blue-50">FAQ</h2>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="bg-blue-950/20 border border-blue-900/20 p-5 rounded-xl">
+                                        <h3 className="font-semibold text-blue-100 mb-2">What is the purpose of the Risk Coverage Ratio?</h3>
+                                        <p className="text-sm text-slate-400 mb-3">
+                                            The Risk Coverage Ratio tells you what percentage of your secured profits you are currently risking in the market.
+                                        </p>
+                                        <ul className="text-sm text-slate-400 space-y-2 list-disc pl-5 marker:text-blue-500/50">
+                                            <li>
+                                                <strong className="text-blue-300 font-medium">If the ratio is low (e.g., &lt; 50% "Safe/Caution"):</strong> You are risking a fraction of your protected profits. Even if all your current risks were realized (hit your stops), you would still be left with a net positive gain from your protected positions.
+                                            </li>
+                                            <li>
+                                                <strong className="text-blue-300 font-medium">If the ratio is 100% ("Defense"):</strong> You are risking exactly as much as you have secured. Your "Safety Buffer" is $0.
+                                            </li>
+                                            <li>
+                                                <strong className="text-blue-300 font-medium">If the ratio is &gt; 100%:</strong> You are risking more than your current protected profits. This means if all your stops were hit, your recent protected gains wouldn't be enough to cover the losses, and it would eat into your principal.
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
