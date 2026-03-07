@@ -1,12 +1,12 @@
-# Release Notes - v0.0.2
+# Release Notes - v0.0.3
 
 **Release Date:** March 7, 2026
 
-We are excited to announce the first public shareable release of the **IBKR Risk Monitor** (v0.0.2)! 
+We are excited to announce the latest release of the **IBKR Risk Monitor** (v0.0.3)! 
 This lightweight, local web application allows you to monitor your Interactive Brokers (IBKR) portfolio risk, moving average thresholds, and dynamic gains in real-time.
 
 ## 🚀 Key Features & Highlights
-
+* **Updated Baseline:** The default principal baseline has been increased to $100,000 for improved default metric tracking.
 * **Real-time Monitoring Framework:** Connect directly to your local IBKR TWS or IB Gateway to monitor your portfolio seamlessly.
 * **Account Auto-Detection:** The application automatically retrieves and detects your available managed accounts upon successfully connecting.
 * **Editable Account ID:** While auto-detection is supported, you can manually review and edit your Account ID directly from the UI.
