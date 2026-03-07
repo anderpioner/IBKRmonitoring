@@ -9,6 +9,7 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 - In TWS/Gateway settings:
   - Go to **API > Settings**.
   - Enable **"Enable ActiveX and Socket Clients"**.
+  - Uncheck **"Read-Only API"**.
   - Note the **Socket port** (default is usually 7496 for Live, 7497 for Paper).
 
 ## Installation
