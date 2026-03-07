@@ -84,7 +84,15 @@ class IBManager:
                 # Request all open orders so stop orders from prior sessions are loaded
                 await self._ib.reqAllOpenOrdersAsync()
                 logger.info(f"Open orders loaded: {len(self._ib.openTrades())} trades")
-                return {"status": "success", "client_id": cid}
+                
+                # Fetch available managed accounts
+                managed_accounts = self._ib.managedAccounts()
+                
+                return {
+                    "status": "success", 
+                    "client_id": cid,
+                    "accounts": managed_accounts
+                }
             except Exception as e:
                 logger.error(f"Attempt {attempt} failed: {e}")
 

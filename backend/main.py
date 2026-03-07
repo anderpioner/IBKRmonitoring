@@ -50,9 +50,18 @@ async def get_status():
     mgr = app.state.ib_manager
     ib = mgr.ib
     connected = ib.isConnected() if ib else False
+    
+    accounts = []
+    if connected:
+        try:
+            accounts = ib.managedAccounts()
+        except:
+            pass
+
     return {
         "connected": connected,
-        "client_id": ib.client.clientId if connected else None
+        "client_id": ib.client.clientId if connected else None,
+        "accounts": accounts
     }
 
 @app.post("/api/connect")

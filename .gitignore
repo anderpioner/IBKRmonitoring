@@ -163,3 +163,7 @@ cython_debug/
 
 # VS Code
 .vscode/
+
+# Local App Data
+metrics_cache.json
+UI001.html

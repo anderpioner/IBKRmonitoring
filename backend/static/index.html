@@ -148,26 +148,39 @@
 
         function App() {
             const [sidebarOpen, setSidebarOpen] = useState(true);
-            const [autoRefresh, setAutoRefresh] = useState(true);
-            const [refreshInterval, setRefreshInterval] = useState(30);
-            const [baseline, setBaseline] = useState(83000);
-            const [port, setPort] = useState(7496);
-            const [clientId, setClientId] = useState(10);
+            const [autoRefresh, setAutoRefresh] = useState(() => { const v = localStorage.getItem('autoRefresh'); return v !== null ? JSON.parse(v) : true; });
+            const [refreshInterval, setRefreshInterval] = useState(() => { const v = localStorage.getItem('refreshInterval'); return v ? parseInt(v) : 30; });
+            const [baseline, setBaseline] = useState(() => { const v = localStorage.getItem('baseline'); return v ? parseInt(v) : 83000; });
+            const [port, setPort] = useState(() => { const v = localStorage.getItem('port'); return v ? parseInt(v) : 7496; });
+            const [clientId, setClientId] = useState(() => { const v = localStorage.getItem('clientId'); return v ? parseInt(v) : 10; });
             const [connectionStatus, setConnectionStatus] = useState(false);
             const [connectedClientId, setConnectedClientId] = useState(null);
             const [data, setData] = useState(null);
             const [loading, setLoading] = useState(false);
             const [refreshing, setRefreshing] = useState(false);
             const [maPeriod, setMaPeriod] = useState(20);
-            const [accountId, setAccountId] = useState("U2753907");
+            const [accountId, setAccountId] = useState(() => { return localStorage.getItem('accountId') || ""; });
             const [error, setError] = useState(null);
 
+            const [availableAccounts, setAvailableAccounts] = useState([]);
+
             const maPeriodRef = useRef(20);
-            const accountIdRef = useRef("U2753907");
+            const accountIdRef = useRef(localStorage.getItem('accountId') || "");
             const refreshingRef = useRef(false);
             const refreshTimeoutRef = useRef(null);
 
             const API_BASE = "http://localhost:8000/api";
+
+            // Save variables to localStorage whenever they change
+            useEffect(() => { localStorage.setItem('autoRefresh', JSON.stringify(autoRefresh)); }, [autoRefresh]);
+            useEffect(() => { localStorage.setItem('refreshInterval', refreshInterval); }, [refreshInterval]);
+            useEffect(() => { localStorage.setItem('baseline', baseline); }, [baseline]);
+            useEffect(() => { localStorage.setItem('port', port); }, [port]);
+            useEffect(() => { localStorage.setItem('clientId', clientId); }, [clientId]);
+            useEffect(() => {
+                localStorage.setItem('accountId', accountId);
+                accountIdRef.current = accountId; // Sync ref
+            }, [accountId]);
 
             // Check connection on load
             useEffect(() => {
@@ -197,6 +210,15 @@
                     const info = await res.json();
                     setConnectionStatus(info.connected);
                     setConnectedClientId(info.client_id);
+
+                    if (info.connected && info.accounts && info.accounts.length > 0) {
+                        setAvailableAccounts(info.accounts);
+                        // Auto select first account if current is empty or not in the list
+                        if (!accountIdRef.current || !info.accounts.includes(accountIdRef.current)) {
+                            setAccountId(info.accounts[0]);
+                            accountIdRef.current = info.accounts[0];
+                        }
+                    }
                 } catch (e) {
                     setConnectionStatus(false);
                 }
@@ -211,7 +233,19 @@
                         body: JSON.stringify({ host: "127.0.0.1", port: parseInt(port), clientId: parseInt(clientId) })
                     });
                     if (res.ok) {
+                        const jsonRes = await res.json();
                         setConnectionStatus(true);
+
+                        // Handle auto-account detection
+                        if (jsonRes.accounts && jsonRes.accounts.length > 0) {
+                            setAvailableAccounts(jsonRes.accounts);
+                            // Auto select first account if current is not in the list
+                            if (!jsonRes.accounts.includes(accountIdRef.current)) {
+                                setAccountId(jsonRes.accounts[0]);
+                                accountIdRef.current = jsonRes.accounts[0];
+                            }
+                        }
+
                         // Await the initial fetch
                         const fetchSuccess = await fetchData(true);
                         if (!fetchSuccess) {
@@ -316,38 +350,6 @@
                                         <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Baseline ($)</label>
                                         <input type="number" value={baseline} onChange={(e) => setBaseline(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
                                     </div>
-                                    <div className="space-y-1 px-1">
-                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">IBKR Port</label>
-                                        <input type="number" value={port} onChange={(e) => setPort(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
-                                        <div className="flex gap-2 mt-1">
-                                            <button onClick={() => setPort(7496)} className="text-[8px] text-blue-400 hover:text-blue-200">Live (7496)</button>
-                                            <button onClick={() => setPort(7497)} className="text-[8px] text-blue-400 hover:text-blue-200">Paper (7497)</button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1 px-1">
-                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Client ID</label>
-                                        <input type="number" value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
-                                        {connectionStatus && connectedClientId !== null && (
-                                            <div className="text-[9px] text-cyan-400 mt-1 uppercase font-bold">Active ID: {connectedClientId}</div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-1 px-1">
-                                        <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Account ID</label>
-                                        <input type="text" value={accountId} onChange={(e) => { setAccountId(e.target.value); accountIdRef.current = e.target.value; }} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
-                                    </div>
-                                    <div className="space-y-3 bg-blue-950/10 p-3 rounded-xl border border-blue-900/10">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs text-blue-200/70">Auto-Refresh</span>
-                                            <button onClick={() => { setAutoRefresh(!autoRefresh); if (!autoRefresh && connectionStatus) fetchData(); }} className={`w-8 h-4 rounded-full relative transition-colors ${autoRefresh ? 'bg-blue-600' : 'bg-slate-800'}`}>
-                                                <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRefresh ? 'right-0.5' : 'left-0.5'}`} />
-                                            </button>
-                                        </div>
-                                        <input type="range" min="5" max="60" value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-full h-1 bg-blue-950 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                                        <div className="flex justify-between text-[9px] text-blue-500/50 font-bold">
-                                            <span className="uppercase">Interval</span>
-                                            <span>{refreshInterval}s</span>
-                                        </div>
-                                    </div>
                                     <div className="space-y-2 px-1">
                                         <div className="relative group inline-flex items-center gap-1.5 cursor-help">
                                             <span className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Threshold Gains MA</span>
@@ -381,6 +383,67 @@
                                                 <SafeIcon icon={Power} className="w-3 h-3" /> Off
                                             </button>
                                         )}
+                                    </div>
+                                    <div className="bg-[#0b1021] border border-blue-900/30 p-4 rounded-2xl shadow-lg space-y-5 relative mt-4">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600/50 to-cyan-500/50 rounded-t-2xl"></div>
+
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-blue-900/20 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+                                            <SafeIcon icon={Settings} className="w-3.5 h-3.5 text-blue-500" />
+                                            Connection Setup
+                                        </div>
+
+                                        <div className="space-y-1 px-1">
+                                            <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">IBKR Port</label>
+                                            <input type="number" value={port} onChange={(e) => setPort(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                            <div className="flex gap-2 mt-1">
+                                                <button onClick={() => setPort(7496)} className="text-[8px] text-blue-400 hover:text-blue-200">Live (7496)</button>
+                                                <button onClick={() => setPort(7497)} className="text-[8px] text-blue-400 hover:text-blue-200">Paper (7497)</button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 px-1">
+                                            <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Client ID</label>
+                                            <input type="number" value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" />
+                                            {connectionStatus && connectedClientId !== null && (
+                                                <div className="text-[9px] text-cyan-400 mt-1 uppercase font-bold">Active ID: {connectedClientId}</div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1 px-1">
+                                            <label className="text-[10px] text-blue-500/50 uppercase font-bold tracking-widest">Account ID</label>
+                                            {availableAccounts.length > 0 ? (
+                                                <div className="relative">
+                                                    <select
+                                                        value={accountId}
+                                                        onChange={(e) => {
+                                                            setAccountId(e.target.value);
+                                                            accountIdRef.current = e.target.value;
+                                                        }}
+                                                        className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md appearance-none cursor-pointer pr-10"
+                                                    >
+                                                        {availableAccounts.map(acc => (
+                                                            <option key={acc} value={acc} className="bg-slate-900 text-blue-50">{acc}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500/50">
+                                                        <ChevronDown className="w-4 h-4" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <input type="text" value={accountId} onChange={(e) => { setAccountId(e.target.value); accountIdRef.current = e.target.value; }} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-0 text-md" placeholder="Enter Account ID" />
+                                            )}
+                                        </div>
+                                        <div className="space-y-3 bg-blue-950/10 p-3 rounded-xl border border-blue-900/10">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-blue-200/70">Auto-Refresh</span>
+                                                <button onClick={() => { setAutoRefresh(!autoRefresh); if (!autoRefresh && connectionStatus) fetchData(); }} className={`w-8 h-4 rounded-full relative transition-colors ${autoRefresh ? 'bg-blue-600' : 'bg-slate-800'}`}>
+                                                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRefresh ? 'right-0.5' : 'left-0.5'}`} />
+                                                </button>
+                                            </div>
+                                            <input type="range" min="5" max="60" value={refreshInterval} onChange={(e) => setRefreshInterval(e.target.value)} className="w-full h-1 bg-blue-950 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                                            <div className="flex justify-between text-[9px] text-blue-500/50 font-bold">
+                                                <span className="uppercase">Interval</span>
+                                                <span>{refreshInterval}s</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             )}
