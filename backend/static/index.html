@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide React (UMD) -->
-    <script src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.380.0/dist/umd/lucide-react.js"></script>
     <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -66,8 +66,27 @@
         const {
             Shield, Activity, TrendingUp, ShieldCheck, Settings, RefreshCcw,
             Power, Info, ArrowUpRight, ArrowDownRight, Wallet, Zap,
-            Cpu, BarChart3, ChevronDown, AlertOctagon, Network, Circle
+            Cpu, BarChart3, ChevronDown, AlertOctagon, Network, Circle, Database, Radio
         } = IconProxy;
+
+        // Custom Inline Icons for reliable rendering
+        const SvgWrapper = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className || "w-4 h-4"}>{children}</svg>
+        );
+        const RawDatabaseIcon = (p) => <SvgWrapper {...p}><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5V19A9 3 0 0 0 21 19V5" /><path d="M3 12A9 3 0 0 0 21 12" /></SvgWrapper>;
+        const RawWalletIcon = (p) => <SvgWrapper {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></SvgWrapper>;
+        const RawActivityIcon = (p) => <SvgWrapper {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></SvgWrapper>;
+        const RawTrendingUpIcon = (p) => <SvgWrapper {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></SvgWrapper>;
+        const RawShieldIcon = (p) => <SvgWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></SvgWrapper>;
+        const RawAlertIcon = (p) => <SvgWrapper {...p}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></SvgWrapper>;
+        const RawShieldCheckIcon = (p) => <SvgWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></SvgWrapper>;
+        const RawZapIcon = (p) => <SvgWrapper {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></SvgWrapper>;
+        const RawPieChartIcon = (p) => <SvgWrapper {...p}><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></SvgWrapper>;
+        const RawLandmarkIcon = (p) => <SvgWrapper {...p}><path d="M3 22h18" /><path d="M6 18v-7" /><path d="M10 18v-7" /><path d="M14 18v-7" /><path d="M18 18v-7" /><path d="M12 2l8 5H4z" /></SvgWrapper>;
+        const RawBriefcaseIcon = (p) => <SvgWrapper {...p}><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></SvgWrapper>;
+        const RawBanknoteIcon = (p) => <SvgWrapper {...p}><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></SvgWrapper>;
+
+
 
         const SafeIcon = ({ icon: IconComponent, ...props }) => {
             if (!IconComponent) return <div className="w-4 h-4 bg-blue-500/10 rounded" />;
@@ -114,7 +133,12 @@
                     {tooltip && (
                         <div className="absolute bottom-full left-0 mb-2 w-64 z-50 hidden group-hover:block">
                             <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
-                                {tooltip}
+                                {tooltip.split('\n').map((line, i) => (
+                                    <React.Fragment key={i}>
+                                        {line}
+                                        {i < tooltip.split('\n').length - 1 && <br />}
+                                    </React.Fragment>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -272,7 +296,7 @@
 
             // Helper to strictly format ALL numbers to exactly 2 decimal places
             const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const pctOfTm = (val) => data && data.totalMoney ? `${(val / data.totalMoney * 100).toFixed(2)}% [% of TM]` : null;
+            const pctOfNl = (val) => data && data.netLiquidation ? `${(val / data.netLiquidation * 100).toFixed(2)}% [% of NL]` : null;
 
             return (
                 <div className="min-h-screen bg-[#020617] text-slate-300 font-sans selection:bg-blue-500/30">
@@ -401,63 +425,64 @@
                         <section className="mb-10 relative">
                             <div className="bg-[#0f172a] border border-blue-900/30 rounded-3xl p-8 relative shadow-2xl">
                                 <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 blur-[100px] pointer-events-none -mr-32 -mt-32" />
-                                <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                                    <div className="lg:col-span-4 border-r border-blue-900/10 pr-12">
-                                        <div className="flex items-center gap-2 text-blue-400/40 mb-4 font-bold text-[10px] tracking-[0.25em] uppercase">
-                                            <Cpu className="w-4 h-4" /> System Risk Monitor
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <div className="text-blue-500/60 text-[10px] font-bold uppercase tracking-widest">Open Risk</div>
+
+                                <div className="relative flex flex-col lg:flex-row gap-12 items-center justify-between">
+                                    <div className="flex-1 w-full flex flex-col justify-center">
+                                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 md:gap-12">
+                                            <div>
+                                                <div className="flex items-center gap-2 text-blue-400/40 mb-4 font-bold text-[10px] tracking-[0.25em] uppercase">
+                                                    <Cpu className="w-4 h-4" /> System Risk Monitor
+                                                </div>
+                                                <div className="text-blue-500/60 text-[10px] font-bold uppercase tracking-widest mb-2">Open Risk</div>
+                                                <div className="text-5xl lg:text-6xl font-light text-blue-50 tracking-tighter">
+                                                    ${data ? formatVal(data.openRisk) : "0.00"}
+                                                </div>
                                             </div>
-                                            <div className="text-5xl font-light text-blue-50 tracking-tighter">
-                                                ${data ? formatVal(data.openRisk) : "0.00"}
+
+                                            <div className="md:pb-1">
+                                                <div className="relative group inline-flex items-center gap-1.5 cursor-help mb-2">
+                                                    <span className="text-blue-500/40 text-[10px] font-bold uppercase tracking-widest">Safety Buffer</span>
+                                                    <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
+                                                    <div className="absolute left-0 bottom-full mb-2 w-64 z-50 text-left hidden group-hover:block">
+                                                        <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                            Threshold Gains minus Open Risk. A positive buffer means locked-in profits exceed current risk.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className={`text-4xl lg:text-5xl font-medium ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
+                                                    ${formatVal(buffer)}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="lg:col-span-8 grid grid-cols-2 gap-8">
-                                        <div>
-                                            <div className="text-blue-500/40 text-[10px] font-bold uppercase tracking-widest">Threshold Gains</div>
-                                            <div className="text-2xl font-medium text-blue-100">
-                                                ${data ? formatVal(data.thresholdGains) : "0.00"}
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="relative group inline-flex items-center justify-end w-full gap-1.5 cursor-help">
-                                                <div className="absolute right-0 bottom-full mb-2 w-64 z-50 text-left hidden group-hover:block">
-                                                    <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
-                                                        Threshold Gains minus Open Risk. A positive buffer means locked-in profits exceed current risk.
-                                                    </div>
-                                                </div>
-                                                <span className="text-blue-500/40 text-[10px] font-bold uppercase tracking-widest">Safety Buffer</span>
-                                                <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
-                                            </div>
-                                            <div className={`text-2xl font-medium ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
-                                                ${formatVal(buffer)}
-                                            </div>
+                                    {/* Vertical Risk Coverage Bar */}
+                                    <div className="w-full lg:w-auto lg:border-l border-blue-900/10 lg:pl-12 flex justify-center lg:justify-start items-stretch gap-6 h-40">
+                                        {/* Left Labels */}
+                                        <div className="flex flex-col justify-between text-[8px] font-bold text-blue-500/30 uppercase tracking-[0.2em] text-right py-1">
+                                            <span className="text-blue-400">Defense (100%)</span>
+                                            <span>Caution (50%)</span>
+                                            <span>Safe</span>
                                         </div>
 
-                                        <div className="col-span-2 space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <div className="relative group inline-flex items-center gap-1.5 cursor-help">
-                                                    <span className="text-[10px] font-bold text-blue-500/50 uppercase tracking-widest">Risk Coverage Ratio</span>
-                                                    <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors" />
-                                                    <div className="absolute left-0 bottom-full mb-2 w-64 z-50 hidden group-hover:block">
-                                                        <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
-                                                            (Open Risk / Threshold Gains). The percentage of stable profits currently at risk in the market.
-                                                        </div>
+                                        {/* Vertical progression Bar */}
+                                        <div className="relative w-3 bg-blue-950 rounded-full border border-blue-900/30 p-[1px] flex flex-col justify-end overflow-hidden">
+                                            <div className={`w-full rounded-full transition-all duration-1000 ${coverage >= 100 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-gradient-to-t from-blue-900 via-blue-600 to-cyan-400'}`} style={{ height: `${Math.min(100, coverage)}%` }} />
+                                        </div>
+
+                                        {/* Info and Value */}
+                                        <div className="flex flex-col justify-between py-1 min-w-[120px]">
+                                            <div className="relative group inline-flex items-start gap-1.5 cursor-help">
+                                                <span className="text-[10px] font-bold text-blue-500/50 uppercase tracking-widest leading-tight">Risk Coverage<br />Ratio</span>
+                                                <SafeIcon icon={Info} className="w-3 h-3 text-blue-900 group-hover:text-blue-500 transition-colors shrink-0" />
+                                                <div className="absolute right-0 lg:left-0 top-full mt-2 w-64 z-50 hidden group-hover:block">
+                                                    <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
+                                                        (Open Risk / Threshold Gains). The percentage of stable profits currently at risk in the market.
                                                     </div>
                                                 </div>
-                                                <span className="text-sm font-medium text-blue-100">{formatVal(coverage)}%</span>
                                             </div>
-                                            <div className="relative h-2.5 bg-blue-950 rounded-full overflow-hidden border border-blue-900/30 p-[1px]">
-                                                <div className={`h-full bg-gradient-to-r from-blue-900 via-blue-600 to-cyan-400 rounded-full transition-all duration-1000`} style={{ width: `${Math.min(100, coverage)}%` }} />
-                                            </div>
-                                            <div className="flex justify-between text-[8px] font-bold text-blue-500/30 uppercase tracking-[0.2em]">
-                                                <span>Safe</span>
-                                                <span>Caution (50%)</span>
-                                                <span className="text-blue-400">Defense (100%)</span>
+                                            <div>
+                                                <span className={`text-3xl font-medium ${coverage >= 100 ? 'text-red-400' : 'text-blue-100'}`}>{formatVal(coverage)}%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -466,23 +491,44 @@
                         </section>
 
                         {/* Cards */}
-                        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-                            {/* Left Side */}
-                            <div className="flex flex-col gap-6">
-                                <StatCard color="blue" title="Total Money [TM]" value={data ? `$${formatVal(data.totalMoney)}` : "$--"} subValue={data ? pctOfTm(data.totalMoney) : null} icon={Circle} tooltip="The current total value of your account, representing the sum of your Principal State and your Growth State." badge={data && data.weightedAdr > 0 ? <div className="px-2 py-0.5 rounded border border-purple-500/20 bg-purple-500/10 text-purple-300/80 text-[9px] font-bold tracking-widest uppercase" title="Weighted Average Daily Range (20 days)">WT ADR {formatVal(data.weightedAdr)}%</div> : null} />
-                                <div className="grid grid-cols-2 gap-6">
-                                    <StatCard color="blue" title="Principal State" value={data ? `$${formatVal(data.principalState)}` : "$--"} subValue={data ? pctOfTm(data.principalState) : null} icon={Circle} tooltip='The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.' />
-                                    <StatCard color="blue" title="Open Risk" value={data ? `$${formatVal(data.openRisk)}` : "$--"} subValue={data ? pctOfTm(data.openRisk) : null} icon={Circle} tooltip="The total dollar amount at risk across all positions where stops are not yet at breakeven, plus any fresh risk from new entries." />
-                                </div>
+                        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+                            {/* Row 1 */}
+                            <div className="lg:col-span-2">
+                                <StatCard color="blue" title="Net Liquidation [NL]" value={data ? `$${formatVal(data.netLiquidation)}` : "$--"} subValue={data ? pctOfNl(data.netLiquidation) : null} icon={RawLandmarkIcon} tooltip={'The true Net Liquidation Value fetched directly from Interactive Brokers API.\n\nFormula: API Fetch (NetLiquidation)'} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Cash" value={data ? `$${formatVal(data.cash)}` : "$--"} subValue={data ? pctOfNl(data.cash) : null} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="emerald" title="Growth State" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfNl(data.growthState) : null} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
                             </div>
 
-                            {/* Right Side */}
-                            <div className="flex flex-col gap-6">
-                                <StatCard color="emerald" title="Growth State" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfTm(data.growthState) : null} icon={Circle} tooltip="Unrealized PnL — the total floating profit or loss across all open positions." />
-                                <div className="grid grid-cols-2 gap-6">
-                                    <StatCard color="emerald" title="Threshold Gains" value={data ? `$${formatVal(data.thresholdGains)}` : "$--"} subValue={data ? pctOfTm(data.thresholdGains) : null} icon={Circle} tooltip={`The portion of your unrealized profits that are "stable" because they are protected by your current stop-loss levels. Calculated using MA${maPeriod}.`} />
-                                    <StatCard color="emerald" title="Dynamic Gains" value={data ? `$${formatVal(data.dynamicGains)}` : "$--"} subValue={data ? pctOfTm(data.dynamicGains) : null} icon={Circle} tooltip='The fluid portion of your profits that fluctuates with market volatility and has not yet been "locked in" by a protective stop.' />
-                                </div>
+                            {/* Row 2 */}
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Market Value of Positions" value={data ? `$${formatVal(data.marketValueOfPositions)}` : "$--"} subValue={data ? pctOfNl(data.marketValueOfPositions) : null} icon={RawBriefcaseIcon} tooltip={'The current total market value (mark price) of all open positions.\n\nFormula: API Fetch (∑ MarketValue)'} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Weighted ADR" value={data ? `${formatVal(data.weightedAdr)}%` : "--%"} subValue={null} icon={RawActivityIcon} tooltip={"Weighted Average Daily Range (20 days) across all positions, proportional to their market value allocation.\n\nFormula: ∑ [ (Position Value / Total Market Value) × ADR ]"} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Money Allocated" value={data ? `$${formatVal(data.moneyAllocated)}` : "$--"} subValue={data ? pctOfNl(data.moneyAllocated) : null} icon={RawPieChartIcon} tooltip={"The total initial capital (cost basis) invested across all open positions.\n\nFormula: ∑ (Position Quantity × Average Cost)"} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="emerald" title="Threshold Gains" value={data ? `$${formatVal(data.thresholdGains)}` : "$--"} subValue={data ? pctOfNl(data.thresholdGains) : null} icon={RawShieldCheckIcon} tooltip={`The portion of your unrealized profits that are "stable" because they are protected by either your current stop-loss levels or your MA\${maPeriod} threshold.\n\nFormula: ∑ [abs(Exit Price - Entry Price) × Position Quantity]`} />
+                            </div>
+
+                            {/* Row 3 */}
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Total Money" value={data ? `$${formatVal(data.totalMoney)}` : "$--"} subValue={data ? pctOfNl(data.totalMoney) : null} icon={RawWalletIcon} tooltip={"The current total value of your account, representing the sum of your Principal State and your Growth State.\n\nFormula: Principal State + Growth State"} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Principal State" value={data ? `$${formatVal(data.principalState)}` : "$--"} subValue={data ? pctOfNl(data.principalState) : null} icon={RawShieldIcon} tooltip={'The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.\n\nFormula: (Cash + Money Allocated) - Open Risk'} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="blue" title="Open Risk" value={data ? `$${formatVal(data.openRisk)}` : "$--"} subValue={data ? pctOfNl(data.openRisk) : null} icon={RawAlertIcon} tooltip={'The total dollar amount at risk across all positions where stops are not yet at breakeven, plus any fresh risk from new entries. *Note: Actual risk may be higher if a price gaps down past your stop.\n\nFormula: ∑ [abs(Market Price - Exit Price) × Position Quantity]'} />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <StatCard color="emerald" title="Dynamic Gains" value={data ? `$${formatVal(data.dynamicGains)}` : "$--"} subValue={data ? pctOfNl(data.dynamicGains) : null} icon={RawZapIcon} tooltip={'The fluid portion of your profits that fluctuates with market volatility and has not yet been "locked in" by a protective stop.\n\nFormula: Growth State - Threshold Gains'} />
                             </div>
                         </section>
 

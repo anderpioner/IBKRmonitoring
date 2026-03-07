@@ -218,9 +218,15 @@ class IBManager:
                     effective_exit = None
 
                 if stop_price:
-                    risk = abs(market_price - stop_price) * abs(position)
+                    if (position > 0 and market_price < stop_price) or (position < 0 and market_price > stop_price):
+                        risk = 0.0 # Gapped past stop
+                    else:
+                        risk = abs(market_price - stop_price) * abs(position)
                 elif ma_value:
-                    risk = abs(market_price - ma_value) * abs(position)
+                    if (position > 0 and market_price < ma_value) or (position < 0 and market_price > ma_value):
+                        risk = 0.0 # Gapped past MA fallback
+                    else:
+                        risk = abs(market_price - ma_value) * abs(position)
                 else:
                     risk = abs(market_value)
 
@@ -231,6 +237,8 @@ class IBManager:
                     (position < 0 and effective_exit < avg_cost)
                 ):
                     t_gain = abs(effective_exit - avg_cost) * abs(position)
+                    # Constraint: Threshold gains cannot exceed actual Unrealized PnL
+                    t_gain = min(t_gain, max(0.0, float(unrealized_pnl)))
                 else:
                     t_gain = 0.0
 
@@ -250,6 +258,8 @@ class IBManager:
                 })
 
             total_abs_market_value = sum(abs(p["pos"] * p["price"]) for p in position_data)
+            total_allocated_cost = sum(abs(p["pos"] * p["avgCost"]) for p in position_data)
+
             weighted_adr = 0.0
             if total_abs_market_value > 0:
                 weighted_adr = sum(
@@ -257,12 +267,19 @@ class IBManager:
                     for p in position_data if p["adr"] is not None
                 )
 
+            # Principal State uses the initial investment (allocated cost), not the fluctuating market value
+            principal_state = (cash + total_allocated_cost) - total_open_risk
+            
             return {
                 "status": "success",
-                "totalMoney": net_liquidation,
+                "totalMoney": principal_state + total_unrealized_pnl, # Total Money = Principal State + Growth State
+                "netLiquidation": net_liquidation, # Add actual net liquidation value
+                "cash": cash,
+                "moneyAllocated": total_allocated_cost,
+                "marketValueOfPositions": total_market_value,
                 "openRisk": total_open_risk,
                 "weightedAdr": weighted_adr,
-                "principalState": (cash + total_market_value) - total_open_risk,
+                "principalState": principal_state,
                 "growthState": total_unrealized_pnl,
                 "thresholdGains": threshold_gains,
                 "dynamicGains": total_unrealized_pnl - threshold_gains,
