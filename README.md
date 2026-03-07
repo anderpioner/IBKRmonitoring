@@ -20,7 +20,7 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
    cd IBKRmonitoring
    ```
 
-2. Create a virtual environment (recommended):
+2. Create a virtual environment using Python's built-in `venv` module (recommended):
    ```bash
    python -m venv venv
    venv\Scripts\activate
