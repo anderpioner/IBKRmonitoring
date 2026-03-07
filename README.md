@@ -4,7 +4,7 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 
 ## Prerequisites
 
-- **Python 3.8+** installed on your Windows machine.
+- **Python 3.8+** installed on your machine (Windows or macOS).
 - **Interactive Brokers TWS or IB Gateway** installed and running locally.
 - In TWS/Gateway settings:
   - Go to **API > Settings**.
@@ -22,8 +22,13 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 
 2. Create a virtual environment using Python's built-in `venv` module (recommended):
    ```bash
-   python -m venv venv
+   python3 -m venv venv
+   
+   # On Windows:
    venv\Scripts\activate
+   
+   # On macOS/Linux:
+   source venv/bin/activate
    ```
 
 3. Install the required dependencies:
@@ -36,7 +41,11 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 1. Ensure TWS or IB Gateway is open and logged in.
 2. Run the application:
    ```bash
+   # On Windows:
    python start_app.py
+
+   # On macOS/Linux:
+   python3 start_app.py
    ```
 3. Open your web browser and navigate to the Dashboard URL shown in the console (usually `http://localhost:8000/ui/index.html`).
 
