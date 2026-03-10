@@ -167,3 +167,4 @@ cython_debug/
 # Local App Data
 metrics_cache.json
 UI001.html
+*.zip
