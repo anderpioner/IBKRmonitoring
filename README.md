@@ -14,10 +14,13 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 
 ## Installation
 
-1. Clone this repository to your local machine:
+1. Extract the provided `IBKRmonitoring-v0.x.x.zip` file to a folder on your computer.
+   - **Recommended Python version for Windows**: Python 3.10+
+   - **Recommended Python version for macOS**: Python 3.9+
+
+2. Open a terminal (Command Prompt on Windows, Terminal on macOS) and navigate into the extracted folder:
    ```bash
-   git clone https://github.com/anderpioner/IBKRmonitoring.git
-   cd IBKRmonitoring
+   cd path/to/extracted/IBKRmonitoring
    ```
 
 2. Create a virtual environment using Python's built-in `venv` module (recommended):

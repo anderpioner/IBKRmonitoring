@@ -149,12 +149,12 @@ class IBManager:
 
             # Request fresh open orders to get updated stop prices from TWS
             try:
-                await ib.reqAllOpenOrdersAsync()
+                # Use the return value of reqAllOpenOrdersAsync which only contains truly open trades at this moment
+                active_trades = await ib.reqAllOpenOrdersAsync()
             except Exception as e:
                 logger.warning(f"reqAllOpenOrdersAsync error: {e}")
-
-            # openTrades() is a pure cache read
-            active_trades = ib.openTrades()
+                # Fallback to cache
+                active_trades = ib.openTrades()
 
             total_open_risk = threshold_gains = total_unrealized_pnl = total_market_value = 0.0
             position_data = []
