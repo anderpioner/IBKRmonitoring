@@ -1,11 +1,21 @@
-# Release Notes - v0.0.7
+# Release Notes - v0.0.8
 
 **Release Date:** March 11, 2026
 
-We are excited to announce the latest release of the **IBKR Risk Monitor** (v0.0.7)! 
+We are excited to announce the latest release of the **IBKR Risk Monitor** (v0.0.8)! 
 This lightweight, local web application allows you to monitor your Interactive Brokers (IBKR) portfolio risk, moving average thresholds, and dynamic gains in real-time.
 
 ## 🚀 Key Features & Highlights
+* **Enhanced UI Table:** All columns in the Open Positions table are now center-aligned for better visual clarity.
+* **Risk Prioritization:** Reordered the risk columns so "PS Risk" (Principal Protection) appears alongside core PnL metrics, emphasizing principal safety first.
+* **"Market's Money" Info:** Added a clear tooltip explaining that "Market Risk" represents the portion of your portfolio value currently exposed to market volatility.
+* **Favicon & Icons:** Added a custom favicon to the web interface and bundled `app_icon.ico` for the executable.
+* **Accurate Size Percentage:** The "Size %" column now calculates your position weight relative to your **Principal State**, providing a more realistic view of allocation against your "real" own capital.
+* **Stability Fixes:** Improved internal data alignments for more consistent metric tracking.
+
+---
+
+### Previous updates (v0.0.7)
 * **Privacy Mode:** Added a new privacy toggle to hide sensitive monetary values from the dashboard securely.
 * **Principal State (PS) Risk Calculation:** Added a dedicated "PS Risk" column to monitor risk strictly tied to your allocated principal. It dynamically drops to zero when your Stop Price or Moving Average exit exceeds or protects your Average Cost, indicating your initial capital is completely safe.
 * **Total PS Risk Interface:** A new dashboard statistics card has been added to display the aggregated risk of your initial principal across all open positions.
