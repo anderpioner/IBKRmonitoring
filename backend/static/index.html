@@ -66,7 +66,8 @@
         const {
             Shield, Activity, TrendingUp, ShieldCheck, Settings, RefreshCcw,
             Power, Info, ArrowUpRight, ArrowDownRight, Wallet, Zap,
-            Cpu, BarChart3, ChevronDown, AlertOctagon, Network, Circle, Database, Radio
+            Cpu, BarChart3, ChevronDown, AlertOctagon, Network, Circle, Database, Radio,
+            Eye, EyeOff
         } = IconProxy;
 
         // Custom Inline Icons for reliable rendering
@@ -153,6 +154,7 @@
             const [baseline, setBaseline] = useState(() => { const v = localStorage.getItem('baseline'); return v ? parseInt(v) : 100000; });
             const [port, setPort] = useState(() => { const v = localStorage.getItem('port'); return v ? parseInt(v) : 7496; });
             const [clientId, setClientId] = useState(() => { const v = localStorage.getItem('clientId'); return v ? parseInt(v) : 10; });
+            const [isPrivacyMode, setIsPrivacyMode] = useState(() => { const v = localStorage.getItem('isPrivacyMode'); return v !== null ? JSON.parse(v) : false; });
             const [connectionStatus, setConnectionStatus] = useState(false);
             const [connectedClientId, setConnectedClientId] = useState(null);
             const [data, setData] = useState(null);
@@ -181,6 +183,7 @@
                 localStorage.setItem('accountId', accountId);
                 accountIdRef.current = accountId; // Sync ref
             }, [accountId]);
+            useEffect(() => { localStorage.setItem('isPrivacyMode', JSON.stringify(isPrivacyMode)); }, [isPrivacyMode]);
 
             // Check connection on load
             useEffect(() => {
@@ -325,12 +328,33 @@
                 }
             };
 
-            const coverage = data ? (data.openRisk / data.thresholdGains * 100) : 0;
-            const buffer = data ? (data.thresholdGains - data.openRisk) : 0;
+            let coverage = 0;
+            if (data) {
+                if (data.thresholdGains === 0) {
+                    coverage = data.totalPsRisk > 0 ? Infinity : 0;
+                } else {
+                    coverage = (data.totalPsRisk / data.thresholdGains) * 100;
+                }
+            }
+            const buffer = data ? (data.thresholdGains - data.totalPsRisk) : 0;
 
             // Helper to strictly format ALL numbers to exactly 2 decimal places
             const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const pctOfNl = (val) => data && data.netLiquidation ? `${(val / data.netLiquidation * 100).toFixed(2)}% [% of NL]` : null;
+            const pctOfNl = (val) => data && data.principalState ? `${(val / data.principalState * 100).toFixed(2)}% [% of PS]` : null;
+
+            const getCardValue = (val) => {
+                if (val == null) return "$--";
+                if (isPrivacyMode) {
+                    if (data && data.principalState) return `${(val / data.principalState * 100).toFixed(2)}%`;
+                    return "***";
+                }
+                return `$${formatVal(val)}`;
+            };
+
+            const getCardSubValue = (val) => {
+                if (isPrivacyMode || val == null) return null;
+                return pctOfNl(val);
+            };
 
             return (
                 <div className="min-h-screen bg-[#020617] text-slate-300 font-sans selection:bg-blue-500/30">
@@ -466,6 +490,9 @@
                                 </div>
                             </div>
                             <div className="flex items-center gap-6">
+                                <button onClick={() => setIsPrivacyMode(!isPrivacyMode)} className={`flex items-center justify-center gap-2 px-3 py-2 border rounded-xl text-[10px] font-bold uppercase transition-all select-none active:scale-95 ${isPrivacyMode ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/60' : 'bg-blue-950/30 border-blue-900/40 text-blue-400 hover:bg-blue-900/40 hover:text-blue-200 cursor-pointer'}`}>
+                                    <SafeIcon icon={isPrivacyMode ? EyeOff : Eye} className="w-4 h-4" /> {isPrivacyMode ? 'Privacy On' : 'Privacy Off'}
+                                </button>
                                 {connectionStatus && (
                                     <button onClick={(e) => { e.preventDefault(); console.log('Refresh manually triggered via UI'); fetchData(true); }} className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-xl text-[10px] font-bold uppercase transition-all select-none active:scale-95 ${refreshing ? 'bg-blue-600/20 border-blue-500/40 text-blue-300 cursor-wait' : 'bg-blue-950/30 border-blue-900/40 text-blue-400 hover:bg-blue-900/40 hover:text-blue-200 cursor-pointer'}`}>
                                         <SafeIcon icon={RefreshCcw} className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Fetching...' : 'Refresh'}
@@ -498,8 +525,14 @@
                                                 </div>
                                                 <div className="text-blue-500/60 text-[10px] font-bold uppercase tracking-widest mb-2">Open Risk</div>
                                                 <div className="text-5xl lg:text-6xl font-light text-blue-50 tracking-tighter">
-                                                    ${data ? formatVal(data.openRisk) : "0.00"}
+                                                    {getCardValue(data?.totalPsRisk || 0)}
                                                 </div>
+                                                {!isPrivacyMode && (
+                                                    <div className="text-cyan-400 text-[11px] font-medium mt-2 flex items-center">
+                                                        {data && data.totalPsRisk > 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : null}
+                                                        {getCardSubValue(data?.totalPsRisk)}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="md:pb-1">
@@ -513,7 +546,7 @@
                                                     </div>
                                                 </div>
                                                 <div className={`text-4xl lg:text-5xl font-medium ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
-                                                    ${formatVal(buffer)}
+                                                    {getCardValue(!data && buffer === 0 ? null : buffer)}
                                                 </div>
                                             </div>
                                         </div>
@@ -557,44 +590,44 @@
                         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
                             {/* Row 1 */}
                             <div className="col-span-1">
-                                <StatCard color="blue" title="Net Liquidation [NL]" value={data ? `$${formatVal(data.netLiquidation)}` : "$--"} subValue={data ? pctOfNl(data.netLiquidation) : null} icon={RawLandmarkIcon} tooltip={'The true Net Liquidation Value fetched directly from Interactive Brokers API.\n\nFormula: API Fetch (NetLiquidation)'} />
+                                <StatCard color="blue" title="Net Liquidation [NL]" value={getCardValue(data?.netLiquidation)} subValue={getCardSubValue(data?.netLiquidation)} icon={RawLandmarkIcon} tooltip={'The true Net Liquidation Value fetched directly from Interactive Brokers API.\n\nFormula: API Fetch (NetLiquidation)'} />
                             </div>
                             <div className="col-span-1">
-                                <StatCard color="orange" title="Total PS Risk" value={data ? `$${formatVal(data.totalPsRisk)}` : "$--"} subValue={data ? pctOfNl(data.totalPsRisk) : null} icon={RawAlertIcon} tooltip={'The total Principal State Risk across all open positions. It shows the total portion of risk that represents original principal capital vs just floating profits.\n\nFormula: ∑ PS Risk'} />
+                                <StatCard color="orange" title="Open Risk" value={getCardValue(data?.totalPsRisk)} subValue={getCardSubValue(data?.totalPsRisk)} icon={RawAlertIcon} tooltip={'The total Principal State Risk across all open positions. It shows the total portion of risk that represents original principal capital vs just floating profits.\n\nFormula: ∑ PS Risk'} />
                             </div>
                             <div className="col-span-1">
-                                <StatCard color="blue" title="Cash" value={data ? `$${formatVal(data.cash)}` : "$--"} subValue={data ? pctOfNl(data.cash) : null} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
+                                <StatCard color="blue" title="Cash" value={getCardValue(data?.cash)} subValue={getCardSubValue(data?.cash)} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
                             </div>
                             <div className="col-span-1">
-                                <StatCard color="emerald" title="Growth State (Open Profits)" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfNl(data.growthState) : null} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
+                                <StatCard color="emerald" title="Growth State (Open Profits)" value={getCardValue(data?.growthState)} subValue={getCardSubValue(data?.growthState)} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
                             </div>
 
                             {/* Row 2 */}
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Market Value of Positions" value={data ? `$${formatVal(data.marketValueOfPositions)}` : "$--"} subValue={data ? pctOfNl(data.marketValueOfPositions) : null} icon={RawBriefcaseIcon} tooltip={'The current total market value (mark price) of all open positions.\n\nFormula: API Fetch (∑ MarketValue)'} />
+                                <StatCard color="blue" title="Market Value of Positions" value={getCardValue(data?.marketValueOfPositions)} subValue={getCardSubValue(data?.marketValueOfPositions)} icon={RawBriefcaseIcon} tooltip={'The current total market value (mark price) of all open positions.\n\nFormula: API Fetch (∑ MarketValue)'} />
                             </div>
                             <div className="lg:col-span-1">
                                 <StatCard color="blue" title="Weighted ADR" value={data ? `${formatVal(data.weightedAdr)}%` : "--%"} subValue={null} icon={RawActivityIcon} tooltip={"Weighted Average Daily Range (20 days) across all positions, proportional to their market value allocation.\n\nFormula: ∑ [ (Position Value / Total Market Value) × ADR ]"} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Money Allocated" value={data ? `$${formatVal(data.moneyAllocated)}` : "$--"} subValue={data ? pctOfNl(data.moneyAllocated) : null} icon={RawPieChartIcon} tooltip={"The total initial capital (cost basis) invested across all open positions.\n\nFormula: ∑ (Position Quantity × Average Cost)"} />
+                                <StatCard color="blue" title="Money Allocated" value={getCardValue(data?.moneyAllocated)} subValue={getCardSubValue(data?.moneyAllocated)} icon={RawPieChartIcon} tooltip={"The total initial capital (cost basis) invested across all open positions.\n\nFormula: ∑ (Position Quantity × Average Cost)"} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="emerald" title="Threshold Gains" value={data ? `$${formatVal(data.thresholdGains)}` : "$--"} subValue={data ? pctOfNl(data.thresholdGains) : null} icon={RawShieldCheckIcon} tooltip={`The portion of your unrealized profits that are "stable" because they are protected by either your current stop-loss levels or your MA\${maPeriod} threshold.\n\nFormula: ∑ [abs(Exit Price - Entry Price) × Position Quantity]`} />
+                                <StatCard color="emerald" title="Threshold Gains" value={getCardValue(data?.thresholdGains)} subValue={getCardSubValue(data?.thresholdGains)} icon={RawShieldCheckIcon} tooltip={`The portion of your unrealized profits that are "stable" because they are protected by either your current stop-loss levels or your MA${maPeriod} threshold.\n\nFormula: ∑ [abs(Exit Price - Entry Price) × Position Quantity]`} />
                             </div>
 
                             {/* Row 3 */}
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Total Money" value={data ? `$${formatVal(data.totalMoney)}` : "$--"} subValue={data ? pctOfNl(data.totalMoney) : null} icon={RawWalletIcon} tooltip={"The current total value of your account, representing the sum of your Principal State and your Growth State.\n\nFormula: Principal State + Growth State"} />
+                                <StatCard color="blue" title="Total Money" value={getCardValue(data?.totalMoney)} subValue={getCardSubValue(data?.totalMoney)} icon={RawWalletIcon} tooltip={"The current total value of your account, representing the sum of your Principal State and your Growth State.\n\nFormula: Principal State + Growth State"} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Principal State" value={data ? `$${formatVal(data.principalState)}` : "$--"} subValue={data ? pctOfNl(data.principalState) : null} icon={RawShieldIcon} tooltip={'The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.\n\nFormula: (Cash + Money Allocated) - Open Risk'} />
+                                <StatCard color="blue" title="Principal State" value={getCardValue(data?.principalState)} subValue={getCardSubValue(data?.principalState)} icon={RawShieldIcon} tooltip={'The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.\n\nFormula: (Cash + Money Allocated) - Open Risk'} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Open Risk (Market's money)" value={data ? `$${formatVal(data.openRisk)}` : "$--"} subValue={data ? pctOfNl(data.openRisk) : null} icon={RawAlertIcon} tooltip={"The absolute maximum amount of money—whether it's your principal or unprotected profits—that the market can physically take back from you right now, assuming no drastic price gaps past your stops.\n\nFormula: ∑ [abs(Market Price - Exit Price) × Position Quantity]"} />
+                                <StatCard color="blue" title="Total Market's Money" value={getCardValue(data?.openRisk)} subValue={getCardSubValue(data?.openRisk)} icon={RawAlertIcon} tooltip={"The absolute maximum amount of money—whether it's your principal or unprotected profits—that the market can physically take back from you right now, assuming no drastic price gaps past your stops.\n\nFormula: ∑ [abs(Market Price - Exit Price) × Position Quantity]"} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="emerald" title="Dynamic Gains" value={data ? `$${formatVal(data.dynamicGains)}` : "$--"} subValue={data ? pctOfNl(data.dynamicGains) : null} icon={RawZapIcon} tooltip={'The fluid portion of your profits that fluctuates with market volatility and has not yet been "locked in" by a protective stop.\n\nFormula: Growth State - Threshold Gains'} />
+                                <StatCard color="emerald" title="Dynamic Gains" value={getCardValue(data?.dynamicGains)} subValue={getCardSubValue(data?.dynamicGains)} icon={RawZapIcon} tooltip={'The fluid portion of your profits that fluctuates with market volatility and has not yet been "locked in" by a protective stop.\n\nFormula: Growth State - Threshold Gains'} />
                             </div>
                         </section>
 
@@ -646,9 +679,9 @@
                                             {data && data.positions.map((pos) => (
                                                 <tr key={pos.symbol} className="hover:bg-blue-900/10 transition-colors group">
                                                     <td className="px-6 py-4 font-bold text-blue-50">{pos.symbol}</td>
-                                                    <td className="px-6 py-4 text-right text-slate-500">{pos.pos.toLocaleString('en-US')}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">{isPrivacyMode ? "***" : pos.pos.toLocaleString('en-US')}</td>
                                                     <td className="px-6 py-4 text-right text-slate-500">${formatVal(pos.avgCost)}</td>
-                                                    <td className="px-6 py-4 text-right text-slate-500">${formatVal(Math.abs(pos.pos * pos.avgCost))}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">{isPrivacyMode ? "***" : `$${formatVal(Math.abs(pos.pos * pos.avgCost))}`}</td>
                                                     <td className="px-6 py-4 text-right text-slate-500">{data.netLiquidation ? (Math.abs(pos.pos * pos.avgCost) / data.netLiquidation * 100).toFixed(2) + '%' : '--'}</td>
                                                     <td className="px-6 py-4 text-right text-blue-50">${formatVal(pos.price)}</td>
                                                     <td className="px-6 py-4 text-right font-mono">
@@ -663,11 +696,11 @@
                                                     <td className={`px-6 py-4 text-right font-mono ${maPeriod === 10 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma10 ? `$${formatVal(pos.ma10)}` : '--'}</td>
                                                     <td className={`px-6 py-4 text-right font-mono ${maPeriod === 20 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma20 ? `$${formatVal(pos.ma20)}` : '--'}</td>
                                                     <td className={`px-6 py-4 text-right font-semibold ${pos.pnl > 0 ? 'text-cyan-400' : 'text-blue-400/60'}`}>
-                                                        ${formatVal(pos.pnl)}
+                                                        {isPrivacyMode ? "***" : `$${formatVal(pos.pnl)}`}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right font-bold text-blue-400/80">${formatVal(pos.risk)}</td>
-                                                    <td className="px-6 py-4 text-right font-bold text-orange-400/80">${formatVal(pos.psRisk)}</td>
-                                                    <td className="px-6 py-4 text-right text-slate-500">${formatVal(pos.tGain)}</td>
+                                                    <td className="px-6 py-4 text-right font-bold text-blue-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.risk)}`}</td>
+                                                    <td className="px-6 py-4 text-right font-bold text-orange-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.psRisk)}`}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">{isPrivacyMode ? "***" : `$${formatVal(pos.tGain)}`}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -686,29 +719,29 @@
                                 </div>
                                 <div className="space-y-4">
                                     <div className="bg-blue-950/20 border border-blue-900/20 p-5 rounded-xl">
-                                        <h3 className="font-semibold text-blue-100 mb-2">What Open Risk Actually Is</h3>
+                                        <h3 className="font-semibold text-blue-100 mb-2">What Total Market's Money Actually Is?</h3>
                                         <p className="text-sm text-slate-400 mb-3">
-                                            If every single one of your active positions immediately dropped and triggered your stop price (or fell to your Moving Average fallback), your total account balance would drop by the exact amount shown in the Open Risk box.
+                                            If every single one of your active positions immediately dropped and triggered your stop price (or fell to your Moving Average fallback), your total account balance would drop by the exact amount shown in the Total Market's Money box.
                                         </p>
                                         <p className="text-sm text-slate-400 mb-3">
-                                            Your Open Risk is a combination of two things:
+                                            Your Total Market's Money is a combination of two things:
                                         </p>
                                         <ul className="text-sm text-slate-400 space-y-2 list-decimal pl-5 marker:text-blue-500/50">
                                             <li>
-                                                <strong className="text-blue-300 font-medium">Sinking Principal (The Bad Risk):</strong> If you enter a trade and it immediately goes against you, the difference between your Current Price and the Stop Loss represents original capital (your own money) that you are risking.
+                                                <strong className="text-blue-300 font-medium">Sinking Principal (The Bad Risk, or Open Risk):</strong> If you enter a trade and it immediately goes against you, the difference between your Current Price and the Stop Loss represents original capital (your own money) that you are risking.
                                             </li>
                                             <li>
                                                 <strong className="text-blue-300 font-medium">Dynamic Gains (The Fluid Profit Risk):</strong> If you are in a winning trade but you haven't moved your stop up to protect that profit yet, the difference between the Current Price and the Stop Loss represents "The Market's Money" that you are currently floating. You haven't locked it in, so it's technically at risk of being given back.
                                             </li>
                                         </ul>
                                         <p className="text-sm text-slate-400 mt-3 italic">
-                                            Open Risk combines these two numbers across your entire portfolio. It is the absolute maximum amount of money—whether it's your principal or unprotected profits—that the market can physically take back from you right now, assuming no drastic price gaps past your stops.
+                                            Total Market's Money combines these two numbers across your entire portfolio. It is the absolute maximum amount of money—whether it's your principal or unprotected profits—that the market can physically take back from you right now, assuming no drastic price gaps past your stops.
                                         </p>
                                     </div>
                                     <div className="bg-blue-950/20 border border-blue-900/20 p-5 rounded-xl">
                                         <h3 className="font-semibold text-blue-100 mb-2">What is the purpose of the Risk Coverage Ratio?</h3>
                                         <p className="text-sm text-slate-400 mb-3">
-                                            The Risk Coverage Ratio tells you what percentage of your secured profits you are currently risking in the market.
+                                            The Risk Coverage Ratio tells you what percentage of your secured profits you are currently risking in the market. It shows the relationship between your true Open Risk (Principal State Risk) and your Threshold Gains.
                                         </p>
                                         <ul className="text-sm text-slate-400 space-y-2 list-disc pl-5 marker:text-blue-500/50">
                                             <li>
