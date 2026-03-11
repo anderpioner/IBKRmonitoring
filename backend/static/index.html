@@ -606,6 +606,7 @@
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">Pos</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">Avg Cost</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">Size</th>
+                                                <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase text-right">% of NL</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-blue-50 uppercase text-right">Price</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-amber-400/80 uppercase text-right">Stop</th>
                                                 <th className="px-6 py-4 text-[10px] font-bold text-purple-400/80 uppercase text-right" title="Average Daily Range (20 days)">ADR</th>
@@ -634,6 +635,7 @@
                                                     <td className="px-6 py-4 text-right text-slate-500">{pos.pos.toLocaleString('en-US')}</td>
                                                     <td className="px-6 py-4 text-right text-slate-500">${formatVal(pos.avgCost)}</td>
                                                     <td className="px-6 py-4 text-right text-slate-500">${formatVal(Math.abs(pos.pos * pos.avgCost))}</td>
+                                                    <td className="px-6 py-4 text-right text-slate-500">{data.netLiquidation ? (Math.abs(pos.pos * pos.avgCost) / data.netLiquidation * 100).toFixed(2) + '%' : '--'}</td>
                                                     <td className="px-6 py-4 text-right text-blue-50">${formatVal(pos.price)}</td>
                                                     <td className="px-6 py-4 text-right font-mono">
                                                         {pos.stop ? (
