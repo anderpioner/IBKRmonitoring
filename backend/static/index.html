@@ -563,7 +563,7 @@
                                 <StatCard color="blue" title="Cash" value={data ? `$${formatVal(data.cash)}` : "$--"} subValue={data ? pctOfNl(data.cash) : null} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
                             </div>
                             <div className="lg:col-span-1">
-                                <StatCard color="emerald" title="Growth State" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfNl(data.growthState) : null} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
+                                <StatCard color="emerald" title="Growth State (Open Profits)" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfNl(data.growthState) : null} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
                             </div>
 
                             {/* Row 2 */}
@@ -618,7 +618,7 @@
                                                     <div className="relative group inline-flex items-center justify-end w-full gap-1.5 cursor-help">
                                                         <div className="absolute right-0 bottom-full mb-2 w-64 z-50 text-left hidden group-hover:block whitespace-normal font-normal">
                                                             <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[11px] leading-relaxed p-3 rounded-xl shadow-2xl">
-                                                                The backend logic is configured to choose the tighter of your Stop Price and your Moving Average (MA) as the effective exit point for calculating metrics.
+                                                                The backend logic chooses the tighter of your Stop Price and Moving Average (MA) as the effective exit point. It will only account for T-Gain if the stop price is moved in favor of the trade, protecting gains.
                                                             </div>
                                                         </div>
                                                         <span className="text-[10px] font-bold text-slate-500 uppercase">T-Gain</span>
@@ -668,6 +668,26 @@
                                     <h2 className="text-lg font-semibold text-blue-50">FAQ</h2>
                                 </div>
                                 <div className="space-y-4">
+                                    <div className="bg-blue-950/20 border border-blue-900/20 p-5 rounded-xl">
+                                        <h3 className="font-semibold text-blue-100 mb-2">What Open Risk Actually Is</h3>
+                                        <p className="text-sm text-slate-400 mb-3">
+                                            If every single one of your active positions immediately dropped and triggered your stop price (or fell to your Moving Average fallback), your total account balance would drop by the exact amount shown in the Open Risk box.
+                                        </p>
+                                        <p className="text-sm text-slate-400 mb-3">
+                                            Your Open Risk is a combination of two things:
+                                        </p>
+                                        <ul className="text-sm text-slate-400 space-y-2 list-decimal pl-5 marker:text-blue-500/50">
+                                            <li>
+                                                <strong className="text-blue-300 font-medium">Sinking Principal (The Bad Risk):</strong> If you enter a trade and it immediately goes against you, the difference between your Current Price and the Stop Loss represents original capital (your own money) that you are risking.
+                                            </li>
+                                            <li>
+                                                <strong className="text-blue-300 font-medium">Dynamic Gains (The Fluid Profit Risk):</strong> If you are in a winning trade but you haven't moved your stop up to protect that profit yet, the difference between the Current Price and the Stop Loss represents "The Market's Money" that you are currently floating. You haven't locked it in, so it's technically at risk of being given back.
+                                            </li>
+                                        </ul>
+                                        <p className="text-sm text-slate-400 mt-3 italic">
+                                            Open Risk combines these two numbers across your entire portfolio. It is the absolute maximum amount of money—whether it's your principal or unprotected profits—that the market can physically take back from you right now, assuming no drastic price gaps past your stops.
+                                        </p>
+                                    </div>
                                     <div className="bg-blue-950/20 border border-blue-900/20 p-5 rounded-xl">
                                         <h3 className="font-semibold text-blue-100 mb-2">What is the purpose of the Risk Coverage Ratio?</h3>
                                         <p className="text-sm text-slate-400 mb-3">
