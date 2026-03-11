@@ -554,15 +554,18 @@
                         </section>
 
                         {/* Cards */}
-                        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+                        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
                             {/* Row 1 */}
-                            <div className="lg:col-span-2">
+                            <div className="col-span-1">
                                 <StatCard color="blue" title="Net Liquidation [NL]" value={data ? `$${formatVal(data.netLiquidation)}` : "$--"} subValue={data ? pctOfNl(data.netLiquidation) : null} icon={RawLandmarkIcon} tooltip={'The true Net Liquidation Value fetched directly from Interactive Brokers API.\n\nFormula: API Fetch (NetLiquidation)'} />
                             </div>
-                            <div className="lg:col-span-1">
+                            <div className="col-span-1">
+                                <StatCard color="orange" title="Total PS Risk" value={data ? `$${formatVal(data.totalPsRisk)}` : "$--"} subValue={data ? pctOfNl(data.totalPsRisk) : null} icon={RawAlertIcon} tooltip={'The total Principal State Risk across all open positions. It shows the total portion of risk that represents original principal capital vs just floating profits.\n\nFormula: ∑ PS Risk'} />
+                            </div>
+                            <div className="col-span-1">
                                 <StatCard color="blue" title="Cash" value={data ? `$${formatVal(data.cash)}` : "$--"} subValue={data ? pctOfNl(data.cash) : null} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
                             </div>
-                            <div className="lg:col-span-1">
+                            <div className="col-span-1">
                                 <StatCard color="emerald" title="Growth State (Open Profits)" value={data ? `$${formatVal(data.growthState)}` : "$--"} subValue={data ? pctOfNl(data.growthState) : null} icon={RawTrendingUpIcon} tooltip={"Unrealized PnL — the total floating profit or loss across all open positions.\n\nFormula: ∑ (Unrealized PNL for each Position)"} />
                             </div>
 

@@ -156,7 +156,7 @@ class IBManager:
                 # Fallback to cache
                 active_trades = ib.openTrades()
 
-            total_open_risk = threshold_gains = total_unrealized_pnl = total_market_value = 0.0
+            total_open_risk = threshold_gains = total_unrealized_pnl = total_market_value = total_ps_risk = 0.0
             position_data = []
 
             for i, item in enumerate(portfolio_items):
@@ -251,6 +251,16 @@ class IBManager:
                     t_gain = 0.0
 
                 threshold_gains += t_gain
+
+                ps_risk = max(0.0, risk - float(unrealized_pnl))
+                if effective_exit and (
+                    (position > 0 and effective_exit >= avg_cost) or
+                    (position < 0 and effective_exit <= avg_cost)
+                ):
+                    ps_risk = 0.0
+                
+                total_ps_risk += ps_risk
+
                 position_data.append({
                     "symbol": contract.symbol,
                     "pos": position,
@@ -263,7 +273,7 @@ class IBManager:
                     "adr": adr,
                     "risk": risk,
                     "tGain": t_gain,
-                    "psRisk": max(0.0, risk - float(unrealized_pnl))
+                    "psRisk": ps_risk
                 })
 
             total_abs_market_value = sum(abs(p["pos"] * p["price"]) for p in position_data)
@@ -283,6 +293,7 @@ class IBManager:
                 "status": "success",
                 "totalMoney": principal_state + total_unrealized_pnl, # Total Money = Principal State + Growth State
                 "netLiquidation": net_liquidation, # Add actual net liquidation value
+                "totalPsRisk": total_ps_risk, # Added PS Risk aggregation
                 "cash": cash,
                 "moneyAllocated": total_allocated_cost,
                 "marketValueOfPositions": total_market_value,
