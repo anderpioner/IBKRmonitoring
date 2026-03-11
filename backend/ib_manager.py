@@ -262,7 +262,8 @@ class IBManager:
                     "ma20": ma20,
                     "adr": adr,
                     "risk": risk,
-                    "tGain": t_gain
+                    "tGain": t_gain,
+                    "psRisk": max(0.0, risk - float(unrealized_pnl))
                 })
 
             total_abs_market_value = sum(abs(p["pos"] * p["price"]) for p in position_data)
