@@ -17,7 +17,7 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 ## Installation
 
 ### Option 1: Download ZIP (Recommended for beginners)
-1. Extract the provided `IBKRmonitoring-v0.0.6.zip` file to a folder on your computer.
+1. Extract the provided `IBKRmonitoring-v0.0.7.zip` file to a folder on your computer.
 2. Open a terminal (Command Prompt/PowerShell on Windows, Terminal on macOS) and navigate into the extracted folder:
    ```bash
    cd path/to/extracted/IBKRmonitoring

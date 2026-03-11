@@ -287,7 +287,7 @@ class IBManager:
                 )
 
             # Principal State uses the initial investment (allocated cost), not the fluctuating market value
-            principal_state = (cash + total_allocated_cost) - total_open_risk
+            principal_state = (cash + total_allocated_cost) - total_ps_risk
             
             return {
                 "status": "success",
