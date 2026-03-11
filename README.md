@@ -4,7 +4,9 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 
 ## Prerequisites
 
-- **Python 3.8+** installed on your machine (Windows or macOS).
+- **Python 3.8+** installed on your machine.
+  - **Windows users:** Python 3.10+ is recommended.
+  - **macOS users:** Python 3.9+ is recommended.
 - **Interactive Brokers TWS or IB Gateway** installed and running locally.
 - In TWS/Gateway settings:
   - Go to **API > Settings**.
@@ -14,35 +16,41 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
 
 ## Installation
 
-1. Extract the provided `IBKRmonitoring-v0.x.x.zip` file to a folder on your computer.
-   - **Recommended Python version for Windows**: Python 3.10+
-   - **Recommended Python version for macOS**: Python 3.9+
-
-2. Open a terminal (Command Prompt on Windows, Terminal on macOS) and navigate into the extracted folder:
+### Option 1: Download ZIP (Recommended for beginners)
+1. Extract the provided `IBKRmonitoring-v0.0.6.zip` file to a folder on your computer.
+2. Open a terminal (Command Prompt/PowerShell on Windows, Terminal on macOS) and navigate into the extracted folder:
    ```bash
    cd path/to/extracted/IBKRmonitoring
    ```
 
-2. Create a virtual environment using Python's built-in `venv` module (recommended):
+### Option 2: Clone via Git
+Open a terminal and run:
+```bash
+git clone https://github.com/anderpioner/IBKRmonitoring.git
+cd IBKRmonitoring
+```
+
+## Setup & Running
+
+1. **Create a virtual environment (Recommended):**
    ```bash
-   python3 -m venv venv
-   
    # On Windows:
+   python -m venv venv
    venv\Scripts\activate
    
    # On macOS/Linux:
+   python3 -m venv venv
    source venv/bin/activate
    ```
 
-3. Install the required dependencies:
+2. **Install the required dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-## Running the Application
+3. **Ensure TWS or IB Gateway is open and logged in.**
 
-1. Ensure TWS or IB Gateway is open and logged in.
-2. Run the application:
+4. **Run the application:**
    ```bash
    # On Windows:
    python start_app.py
@@ -50,7 +58,8 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
    # On macOS/Linux:
    python3 start_app.py
    ```
-3. Open your web browser and navigate to the Dashboard URL shown in the console (usually `http://localhost:8000/ui/index.html`).
+
+5. Open your web browser and navigate to the Dashboard URL shown in the console (usually `http://localhost:8000/ui/index.html`).
 
 ## Usage
 

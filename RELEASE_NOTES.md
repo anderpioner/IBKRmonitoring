@@ -1,19 +1,19 @@
-# Release Notes - v0.0.4
+# Release Notes - v0.0.6
 
-**Release Date:** March 10, 2026
+**Release Date:** March 11, 2026
 
-We are excited to announce the latest release of the **IBKR Risk Monitor** (v0.0.4)! 
+We are excited to announce the latest release of the **IBKR Risk Monitor** (v0.0.6)! 
 This lightweight, local web application allows you to monitor your Interactive Brokers (IBKR) portfolio risk, moving average thresholds, and dynamic gains in real-time.
 
 ## 🚀 Key Features & Highlights
-* **Simplified Installation:** The `README.md` now explicitly includes instructions for users relying on the `.zip` file rather than using `git clone`.
-* **OS Python Recommendations:** Explicit recommendations have been added to the instructions to help users pick the most stable Python versions out-of-the-box (Python 3.10+ for Windows, Python 3.9+ for macOS).
-* **Position Size Display:** A new "Size" column has been added to the Open Positions table (showing absolute dollar value of the position size based on Avg Cost * Position).
-* **Enhanced Order Syncing:** Improved the synchronization of open orders internally (`ib_manager.py`) to fetch a more reliable stream of data.
+* **Public GitHub Release:** The project is now available on GitHub! The `README.md` has been overhauled with better instructions for cloning the repo or downloading the latest Zip, with clear split instructions for Windows CMD/PowerShell vs Mac Terminals.
+* **Application Icon Fixes:** The correct custom application icon is now perfectly bundled and rendered inside the title bar and taskbars on Windows when executing it.
+* **Intelligent Stop Prices:** Refined Logic for auto-suggesting Stop Prices. If manually deleted, the field won't stubbornly refill, allowing power users more granular control. Only re-engages automatically when Entry Price or ATR limits are toggled.
+* **Cleaned Caches:** Temporary debugging files and metric caches have been unlinked from version control to prevent conflicts.
 
 ---
 
-### Previous updates (v0.0.3)
+### Previous updates (v0.0.4)
 * **Updated Baseline:** The default principal baseline was increased to $100,000 for improved default metric tracking.
 * **Account Auto-Detection:** The application automatically retrieves and detects your available managed accounts upon successfully connecting.
 * **Auto-Refresh Support:** Toggle the auto-refresh feature in the dashboard sidebar to keep your metrics updated automatically without manual intervention.
