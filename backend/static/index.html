@@ -706,7 +706,7 @@
                                                 {/* Net Liquidation */}
                                                 <div>
                                                     <div className="text-blue-300/60 text-[10px] font-bold uppercase tracking-widest mb-2">Net Liquidation</div>
-                                                    <div className="text-5xl lg:text-6xl font-light text-blue-50 tracking-tighter">
+                                                    <div className="text-4xl lg:text-5xl font-light text-blue-50 tracking-tighter">
                                                         {getCardValue(data?.netLiquidation || 0)}
                                                     </div>
                                                     {getCardSubValue(data?.netLiquidation) && (
@@ -720,7 +720,7 @@
                                                 {/* Total Market's Money */}
                                                 <div>
                                                     <div className="text-blue-300/60 text-[10px] font-bold uppercase tracking-widest mb-2">Total Market's Money</div>
-                                                    <div className="text-5xl lg:text-6xl font-light text-blue-50 tracking-tighter">
+                                                    <div className="text-4xl lg:text-5xl font-light text-blue-50 tracking-tighter">
                                                         {getCardValue(data?.openRisk || 0)}
                                                     </div>
                                                     {getCardSubValue(data?.openRisk) && (
@@ -746,7 +746,7 @@
                                                 {/* Open Risk */}
                                                 <div className="flex flex-col justify-end">
                                                     <div className="text-blue-300/60 text-[10px] font-bold uppercase tracking-widest mb-2">Open Risk</div>
-                                                    <div className="text-5xl lg:text-6xl font-light text-blue-50 tracking-tighter">
+                                                    <div className="text-4xl lg:text-5xl font-light text-blue-50 tracking-tighter">
                                                         {getCardValue(data?.totalPsRisk || 0)}
                                                     </div>
                                                     {getCardSubValue(data?.totalPsRisk) && (
@@ -768,7 +768,7 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className={`text-5xl lg:text-6xl font-light tracking-tighter ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
+                                                    <div className={`text-4xl lg:text-5xl font-light tracking-tighter ${buffer < 0 ? 'text-red-400' : 'text-blue-300'}`}>
                                                         {getCardValue(!data && buffer === 0 ? null : buffer)}
                                                     </div>
                                                     {getCardSubValue(!data && buffer === 0 ? null : buffer) && (
