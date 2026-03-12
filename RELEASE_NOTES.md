@@ -1,4 +1,21 @@
-# Release Notes - v0.0.9
+# Release Notes - v0.0.10
+
+**Release Date:** March 12, 2026
+
+## ✨ UI & Dashboard Improvements
+* **Hero Section Overhaul:** Redesigned the top stats bar with a more logical grouping. Financial metrics (Net Liquidation, Total Market's Money) are grouped on the left, while "System Risk Monitor" (Open Risk, Safety Buffer, and Risk Coverage Ratio) is unified on the right.
+* **Consistent Typography:** Normalized sizing (text-5xl/6xl) across all core metrics and matched label colors with the StatCard theme for a professional, integrated look.
+* **Collapsible Navigator:** The sidebar is now collapsible, allowing for a cleaner dashboard view while retaining access to core settings.
+* **Refined Layout Logic:** Improved spacing and grouping to visually communicate the relationship between risk metrics and safety buffers.
+
+## 📱 Responsiveness & Stability
+* **Responsive Tables:** Added horizontal scrolling to the Open Positions table, ensuring it remains fully functional on smaller laptop screens (e.g., 16" notebooks).
+* **Viewport Overflow Fix:** Resolved a layout bug where the sidebar would conflict with the main content's centering, causing unwanted scrollbars and overlapping.
+* **Icon Consistency:** Fixed various sidebar and title bar icons that were previously showing as circle fallbacks.
+
+---
+
+### Previous updates (v0.0.9)
 
 **Release Date:** March 11, 2026
 
@@ -7,10 +24,6 @@
 * **Read-Only API Explained:** The `README.md` now includes a clear explanation of *why* the "Read-Only API" checkbox must be unchecked in TWS — even though the app never trades. The app calls `reqAllOpenOrders` on every data refresh to read existing stop-loss orders and display correct stop prices. TWS blocks this under read-only mode because it treats order retrieval as the first step of order management.
 * **Trusted IPs Setup:** Added step-by-step instructions for configuring the Trusted IP Addresses list in TWS (`127.0.0.1`), including a note about the connection approval pop-up.
 * **Corrected Navigation Path:** The TWS settings path is now precisely documented as **Edit > Global Configuration > API > Settings**.
-
----
-
-### Previous updates (v0.0.8)
 
 **Release Date:** March 11, 2026
 
