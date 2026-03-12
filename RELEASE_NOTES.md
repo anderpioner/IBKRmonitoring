@@ -1,4 +1,16 @@
-# Release Notes - v0.0.8
+# Release Notes - v0.0.9
+
+**Release Date:** March 11, 2026
+
+## 📖 Documentation Improvements
+
+* **Read-Only API Explained:** The `README.md` now includes a clear explanation of *why* the "Read-Only API" checkbox must be unchecked in TWS — even though the app never trades. The app calls `reqAllOpenOrders` on every data refresh to read existing stop-loss orders and display correct stop prices. TWS blocks this under read-only mode because it treats order retrieval as the first step of order management.
+* **Trusted IPs Setup:** Added step-by-step instructions for configuring the Trusted IP Addresses list in TWS (`127.0.0.1`), including a note about the connection approval pop-up.
+* **Corrected Navigation Path:** The TWS settings path is now precisely documented as **Edit > Global Configuration > API > Settings**.
+
+---
+
+### Previous updates (v0.0.8)
 
 **Release Date:** March 11, 2026
 
