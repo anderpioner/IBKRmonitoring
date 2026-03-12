@@ -16,7 +16,8 @@
     * The table now presents your крупнейший (largest) exposure first.
     * The chart follows the same order from left to right, providing a clear visual hierarchy of your capital allocation.
 
-## 🎨 UI Polish
+## 🎨 UI & Branding
+* **Dashboard Logo:** Added the application icon directly to the main dashboard header for improved brand identity.
 * **Refined Spacing:** Optimized axis label positions and container dimensions for a more compact and balanced layout.
 * **Themed Styling:** Styled "ADR" references throughout the chart to match the main table's purple color palette.
 
