@@ -8,11 +8,12 @@ A lightweight, local web application to monitor your Interactive Brokers (IBKR) 
   - **Windows users:** Python 3.10+ is recommended.
   - **macOS users:** Python 3.9+ is recommended.
 - **Interactive Brokers TWS or IB Gateway** installed and running locally.
-- In TWS/Gateway settings:
-  - Go to **API > Settings**.
+- In TWS/Gateway settings, go to **Edit > Global Configuration > API > Settings**:
   - Enable **"Enable ActiveX and Socket Clients"**.
   - Uncheck **"Read-Only API"**.
-  - Note the **Socket port** (default is usually 7496 for Live, 7497 for Paper).
+    > **Why is this required?** Even though this app never places or modifies orders, it calls `reqAllOpenOrders` on every data refresh to read your existing stop-loss orders and display their stop prices correctly. TWS blocks this call when Read-Only API is enabled — because retrieving open orders also "binds" them to the client session, which TWS considers an order-management operation. Without unchecking this option, stop prices will not appear in the dashboard.
+  - **Trusted IPs**: In the **Trusted IP Addresses** list, add `127.0.0.1` (this is the loopback address, meaning the app running on the same machine). Click **+** to add it, then **OK**. If you ever see a TWS pop-up asking *"Allow connection from..."*, click **Yes** and it will be remembered.
+  - Note the **Socket port** (default is **7496** for Live accounts, **7497** for Paper Trading).
 
 ## Installation
 
