@@ -1,3 +1,27 @@
+# Release Notes - v0.0.11
+
+**Release Date:** March 12, 2026
+
+## 📊 New Portfolio Visualization
+* **Position Exposure & Risk Chart:** Added a high-end visual dashboard below the positions table.
+    * **Stacked Bar Design:** Displays total position value (exposure) vs. Market's Money (active risk) at a glance.
+    * **Proportional Scaling:** Automatically scales heights based on your largest position for clear portfolio weighting.
+    * **ADR Labels:** Each bar is labeled with its corresponding ADR (Average Daily Range) for quick volatility reference.
+    * **Interactive Tooltips:** Deep dive into specific values, risk, and percentages by hovering over bars.
+* **Unified Legend & Axes:** Added clear color-coded legends and descriptive axis labels (Exposure $ vs Positions) to the chart.
+* **Privacy Mode Integration:** Visual scale maximums and sensitive data are now masked when Privacy Mode is active.
+
+## ⚡ Smart Organization
+* **Automated Descending Sort:** Positions are now automatically sorted by **Market Value** (descending) across the entire app.
+    * The table now presents your крупнейший (largest) exposure first.
+    * The chart follows the same order from left to right, providing a clear visual hierarchy of your capital allocation.
+
+## 🎨 UI Polish
+* **Refined Spacing:** Optimized axis label positions and container dimensions for a more compact and balanced layout.
+* **Themed Styling:** Styled "ADR" references throughout the chart to match the main table's purple color palette.
+
+---
+
 # Release Notes - v0.0.10
 
 **Release Date:** March 12, 2026
