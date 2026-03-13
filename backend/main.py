@@ -61,7 +61,8 @@ async def get_status():
     return {
         "connected": connected,
         "client_id": ib.client.clientId if connected else None,
-        "accounts": accounts
+        "accounts": accounts,
+        "alerts": mgr._alerts[::-1]
     }
 
 @app.post("/api/connect")

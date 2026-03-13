@@ -1,3 +1,35 @@
+# Release Notes - v0.0.12
+
+**Release Date:** March 13, 2026
+
+## 🎯 Advanced Risk & Exposure Tracking
+* **Refactored Position Chart:** The dashboard now features a multi-segment visualization for every position:
+    * **Floating Profit (Emerald Green):** Displays the portion of profit currently "at risk" (Market's Money - Open Risk) at the top of the bar.
+    * **Open Risk (Orange middle):** Displays your principal protection risk directly below the profits.
+    * **Safe Margin (Blue bottom):** Represents the protected portion of your position value.
+    * **Legend Refinement:** Legend now purely focuses on Profit vs. Risk components for maximum clarity.
+* **Smart Stacking logic:** Bar segments are ordered to prioritize the visualization of "floating" dollars at the top.
+
+## 🕒 Enhanced Trades History
+* **"Last 7 Days" View:** Added a new rolling history period to the Trades table.
+    * Toggle between **Today**, **Yesterday**, and **Last 7 Days**.
+    * Aggregates execution data from the IBKR Trade Log (up to 7 days based on TWS settings) to provide a rolling window of recent performance.
+* **Responsive Toggle UI:** Refined the trades view buttons with improved contrast and mobile-responsive wrapping.
+
+## 🔔 Intelligent Alerting System
+* **Segmented Terminal:** The system now categorizes alerts into `CRITICAL ALERTS`, `MARKET ALERTS`, and `SYSTEM FEED` for better prioritization.
+* **Earnings Proximity Alerts:** Automatic high-priority alerts when a position symbol has an earnings event in the next 5 days.
+* **Source Attribution:** All earnings-related data now includes `(Source: Yahoo Finance)` for clear provenance.
+* **Non-blocking Fetching:** Earnings data is fetched in the background to ensure Zero impact on dashboard refresh speeds.
+* **Improved Readability:** Increased terminal font sizes for headers and timestamps.
+
+## 🛠️ Performance & Stability
+* **Concurrent Data Processing:** Implemented `asyncio` background tasks for external data fetching.
+* **Refined MA Logic:** Improved SMA touch detection and price negotiation alerts.
+* **Bug Fixes:** Resolved TWS connection persistence issues and handled various `AttributeError` Edge cases in the data stream.
+
+---
+
 # Release Notes - v0.0.11
 
 **Release Date:** March 12, 2026

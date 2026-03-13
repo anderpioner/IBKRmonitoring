@@ -27,6 +27,12 @@ class IBManager:
         self.persistent_cache_file = "metrics_cache.json"
         self._load_persistent_cache()
         self._ready = threading.Event()
+        self._alerts = [
+            {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "System Initialization Complete"},
+            {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "IBKR monitoring engine active."}
+        ]
+        self._triggered_alerts = {} # date_str -> set()
+        self._earnings_cache = {}  # symbol -> {date, timestamp}
         self._start_ib_thread()
 
     def _load_persistent_cache(self):
@@ -81,6 +87,8 @@ class IBManager:
                 logger.info(f"Attempt {attempt}: {host}:{port} CID={cid}")
                 await self._ib.connectAsync(host, port, clientId=cid, timeout=10)
                 logger.info(f"Connected with CID={cid}")
+                self._add_alert("INFO", f"Connected to IBKR (Port: {port}, CID: {cid})")
+                
                 # Request all open orders so stop orders from prior sessions are loaded
                 await self._ib.reqAllOpenOrdersAsync()
                 logger.info(f"Open orders loaded: {len(self._ib.openTrades())} trades")
@@ -95,8 +103,22 @@ class IBManager:
                 }
             except Exception as e:
                 logger.error(f"Attempt {attempt} failed: {e}")
+                self._add_alert("ALERT", f"Connection attempt {attempt} failed")
+
 
         return {"status": "error", "message": "Could not connect to TWS/Gateway. Check if TWS is open and API is enabled."}
+
+    def _add_alert(self, alert_type, message):
+        """Adds a new alert to the internal buffer."""
+        self._alerts.append({
+            "time": datetime.now().strftime('%H:%M:%S'),
+            "type": alert_type.upper(),
+            "message": message
+        })
+        # Keep only the last 50 alerts
+        if len(self._alerts) > 50:
+            self._alerts = self._alerts[-50:]
+
 
     async def _coro_fetch_data(self, account_id, ma_period=20):
         ib = self._ib
@@ -159,8 +181,15 @@ class IBManager:
             total_open_risk = threshold_gains = total_unrealized_pnl = total_market_value = total_ps_risk = 0.0
             position_data = []
 
+            today_date_str = datetime.now().strftime('%Y-%m-%d')
+            if today_date_str not in self._triggered_alerts:
+                self._triggered_alerts = {today_date_str: set()}
+            triggered_for_today = self._triggered_alerts[today_date_str]
+
             for i, item in enumerate(portfolio_items):
+
                 contract = item.contract
+                symbol = contract.symbol
                 position = item.position
                 avg_cost = item.averageCost
 
@@ -276,6 +305,68 @@ class IBManager:
                     "psRisk": ps_risk
                 })
 
+                # Earnings Alert (Non-blocking background fetch)
+                if symbol not in self._earnings_cache or (datetime.now() - self._earnings_cache[symbol]["ts"]).days > 7:
+                    # Check if already pending to avoid multiple tasks
+                    if symbol not in self._earnings_cache or self._earnings_cache[symbol]["date"] != "Pending":
+                        self._earnings_cache[symbol] = {"date": "Pending", "ts": datetime.now()}
+                        asyncio.create_task(self._bg_update_earnings(symbol))
+                
+                cached_earnings = self._earnings_cache.get(symbol)
+                if cached_earnings and cached_earnings["date"] not in ["Pending", "Unknown", "Error"]:
+                    earnings_val = cached_earnings["date"]
+                    
+                    # 1. Standard INFO Alert
+                    earn_key = f"{symbol}-earnings-{earnings_val}"
+                    if earn_key not in triggered_for_today:
+                        self._add_alert("INFO", f"Next Earnings for {symbol}: {earnings_val} (Source: Yahoo Finance)")
+                        triggered_for_today.add(earn_key)
+
+                    # 2. High-Priority 5-Day Proximity Alert
+                    try:
+                        earn_date = datetime.strptime(earnings_val, "%Y-%m-%d").date()
+                        today = datetime.now().date()
+                        days_to = (earn_date - today).days
+                        if 0 <= days_to <= 5:
+                            prox_key = f"{symbol}-earnings-prox-{earnings_val}"
+                            if prox_key not in triggered_for_today:
+                                msg = f"Upcoming Earnings for {symbol}: {earnings_val} ({days_to} days away) (Source: Yahoo Finance)"
+                                if days_to == 0: msg = f"EARNINGS TODAY for {symbol}: {earnings_val}! (Source: Yahoo Finance)"
+                                self._add_alert("ALERT", msg)
+                                triggered_for_today.add(prox_key)
+                    except Exception as e:
+                        logger.debug(f"Could not parse earnings date for {symbol}: {e}")
+
+                # SMA Alerts Check
+                ticker_low = getattr(ticker, 'low', None)
+                
+                # Today's Low touches SMAs
+                if ticker_low and not pd.isna(ticker_low) and ticker_low > 0:
+                    if ma10 and ticker_low <= ma10:
+                        key = f"{symbol}-touch-10sma"
+                        if key not in triggered_for_today:
+                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 10SMA")
+                            triggered_for_today.add(key)
+                    if ma20 and ticker_low <= ma20:
+                        key = f"{symbol}-touch-20sma"
+                        if key not in triggered_for_today:
+                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 20SMA")
+                            triggered_for_today.add(key)
+
+                # Price negotiated below SMAs
+                if market_price > 0:
+                    if ma10 and market_price < ma10:
+                        key = f"{symbol}-below-10sma"
+                        if key not in triggered_for_today:
+                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 10SMA")
+                            triggered_for_today.add(key)
+                    if ma20 and market_price < ma20:
+                        key = f"{symbol}-below-20sma"
+                        if key not in triggered_for_today:
+                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 20SMA")
+                            triggered_for_today.add(key)
+
+
             total_abs_market_value = sum(abs(p["pos"] * p["price"]) for p in position_data)
             total_allocated_cost = sum(abs(p["pos"] * p["avgCost"]) for p in position_data)
 
@@ -304,12 +395,138 @@ class IBManager:
                 "thresholdGains": threshold_gains,
                 "dynamicGains": total_unrealized_pnl - threshold_gains,
                 "positions": position_data,
+                "trades": await self._coro_fetch_trades(),
+                "alerts": self._alerts[::-1], # Return alerts in reverse chronological order
                 "lastUpdate": datetime.now().strftime('%H:%M:%S')
             }
         except Exception as e:
             logger.error(f"Error in _coro_fetch_data: {e}")
             import traceback
             logger.error(traceback.format_exc())
+            return {"status": "error", "message": str(e)}
+
+    async def _coro_fetch_trades(self):
+        """Fetches executions and aggregates them into active activity and closed trades for today, yesterday, and last 7 days."""
+        ib = self._ib
+        if not ib.isConnected():
+            return {"today": {"active": [], "closed": []}, "yesterday": {"active": [], "closed": []}, "last7": {"active": [], "closed": []}}
+
+        try:
+            from ib_insync import ExecutionFilter
+            # Request executions for the last 8 days to be safe (7 days window)
+            seven_days_ago = (datetime.now() - timedelta(days=8)).strftime("%Y%m%d-00:00:00")
+            filt = ExecutionFilter(time=seven_days_ago)
+            executions = await ib.reqExecutionsAsync(filt)
+            
+            today_date = datetime.now().date()
+            yesterday_date = today_date - timedelta(days=1)
+            seven_days_limit = today_date - timedelta(days=7)
+            
+            # Data structure: period -> symbol -> { data }
+            day_data = {
+                "today": {},
+                "yesterday": {},
+                "last7": {}
+            }
+            
+            for exec_report in executions:
+                execution = exec_report.execution
+                contract = exec_report.contract
+                exec_date = execution.time.date()
+                
+                # Assign to specific buckets
+                targets = []
+                if exec_date == today_date: targets.append("today")
+                if exec_date == yesterday_date: targets.append("yesterday")
+                if exec_date >= seven_days_limit: targets.append("last7")
+                
+                if not targets:
+                    continue
+                
+                symbol = contract.symbol
+                for t in targets:
+                    if symbol not in day_data[t]:
+                        day_data[t][symbol] = {
+                            "buys": {"shares": 0, "totalValue": 0.0, "lastTime": None},
+                            "sells": {"shares": 0, "totalValue": 0.0, "lastTime": None},
+                            "firstTime": execution.time,
+                            "firstSide": execution.side
+                        }
+                    
+                    sym_data = day_data[t][symbol]
+                    side_key = "buys" if execution.side == 'BOT' else "sells"
+                    group = sym_data[side_key]
+                    group["shares"] += execution.shares
+                    group["totalValue"] += (execution.shares * execution.price)
+                    if group["lastTime"] is None or execution.time > group["lastTime"]:
+                        group["lastTime"] = execution.time
+                    
+                    if execution.time < sym_data["firstTime"]:
+                        sym_data["firstTime"] = execution.time
+                        sym_data["firstSide"] = execution.side
+            
+            # Process categories
+            result = {
+                "today": {"active": [], "closed": []},
+                "yesterday": {"active": [], "closed": []},
+                "last7": {"active": [], "closed": []}
+            }
+            
+            for day_key in day_data:
+                for symbol, data in day_data[day_key].items():
+                    b_q = data["buys"]["shares"]
+                    s_q = data["sells"]["shares"]
+                    b_p = data["buys"]["totalValue"] / b_q if b_q > 0 else 0
+                    s_p = data["sells"]["totalValue"] / s_q if s_q > 0 else 0
+                    
+                    closed_qty = min(b_q, s_q)
+                    
+                    # 1. Realized Trade
+                    if closed_qty > 0:
+                        pnl = (s_p - b_p) * closed_qty
+                        side = "Long" if data["firstSide"] == 'BOT' else "Short"
+                        
+                        result[day_key]["closed"].append({
+                            "symbol": symbol,
+                            "side": side,
+                            "shares": closed_qty,
+                            "pnl": pnl,
+                            "time": max(data["buys"]["lastTime"], data["sells"]["lastTime"]).strftime('%H:%M:%S') if day_key != "last7" else max(data["buys"]["lastTime"], data["sells"]["lastTime"]).strftime('%m/%d %H:%M')
+                        })
+                    
+                    # 2. Active Activity (Net remaining) - relevant for today/yesterday primarily
+                    remaining_b = b_q - closed_qty
+                    remaining_s = s_q - closed_qty
+                    
+                    if remaining_b > 0:
+                        result[day_key]["active"].append({
+                            "symbol": symbol,
+                            "side": "BOT",
+                            "shares": remaining_b,
+                            "avgPrice": b_p,
+                            "time": data["buys"]["lastTime"].strftime('%H:%M:%S')
+                        })
+                    elif remaining_s > 0:
+                        result[day_key]["active"].append({
+                            "symbol": symbol,
+                            "side": "SLD",
+                            "shares": remaining_s,
+                            "avgPrice": s_p,
+                            "time": data["sells"]["lastTime"].strftime('%H:%M:%S')
+                        })
+                
+                # Sort both by time descending
+                result[day_key]["active"].sort(key=lambda x: x["time"], reverse=True)
+                result[day_key]["closed"].sort(key=lambda x: x["time"], reverse=True)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in _coro_fetch_trades: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {"today": {"active": [], "closed": []}, "yesterday": {"active": [], "closed": []}}
+
     async def _coro_historical_metrics(self, contract):
         """Fetches 1M of daily bars once, computes and returns (MA10, MA20, ADR20). Uses TRADES data."""
         cid = str(contract.conId)
@@ -407,6 +624,48 @@ class IBManager:
     @property
     def ib(self):
         return self._ib
+
+    def _fetch_yfinance_earnings(self, symbol):
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            cal = ticker.calendar
+            if cal is None:
+                return "Unknown"
+            
+            # Handle Dictionary format (common in recent yfinance)
+            if isinstance(cal, dict):
+                if "Earnings Date" in cal:
+                    dates = cal["Earnings Date"]
+                    if dates and len(dates) > 0:
+                        d = dates[0]
+                        return d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d)
+                return "Unknown"
+
+            # Handle DataFrame format
+            if hasattr(cal, 'empty') and not cal.empty:
+                try:
+                    if "Earnings Date" in cal.index:
+                        d = cal.loc["Earnings Date"].iloc[0]
+                        if hasattr(d, "strftime"):
+                            return d.strftime("%Y-%m-%d")
+                except:
+                    pass
+
+            return "Unknown"
+        except Exception as e:
+            logger.debug(f"Earnings fetch error for {symbol}: {e}")
+            return "Unknown"
+
+    async def _bg_update_earnings(self, symbol):
+        """Helper to update earnings cache in background without blocking main loop."""
+        try:
+            loop = asyncio.get_event_loop()
+            date = await loop.run_in_executor(None, self._fetch_yfinance_earnings, symbol)
+            self._earnings_cache[symbol] = {"date": date, "ts": datetime.now()}
+        except Exception as e:
+            logger.error(f"Background earnings fetch failed for {symbol}: {e}")
+            self._earnings_cache[symbol] = {"date": "Unknown", "ts": datetime.now()}
 
     async def connect(self, host='127.0.0.1', port=7496, client_id=10):
         loop = asyncio.get_event_loop()
