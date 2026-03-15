@@ -455,13 +455,13 @@
                             </div>
                         </div>
 
-                        <div className="flex h-80 relative mb-6">
+                        <div className="flex h-[400px] relative mb-6">
                             {/* Y-Axis Label */}
-                            <div className="absolute -left-2 top-0 bottom-16 flex items-center justify-center">
+                            <div className="absolute -left-2 top-0 bottom-24 flex items-center justify-center">
                                 <span className="text-[10px] font-black text-blue-400/80 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">Exposure ($)</span>
                             </div>
 
-                            <div className="flex-1 flex items-end gap-3 px-2 overflow-x-auto custom-scrollbar pb-16 ml-14">
+                            <div className="flex-1 flex items-end gap-3 px-2 overflow-x-auto custom-scrollbar pb-28 ml-14">
                                 {data.positions.map((pos) => {
                                     const totalValue = Math.abs((pos.pos || 0) * (pos.price || 0));
                                     const totalRisk = pos.risk || 0;
@@ -498,7 +498,7 @@
                                             </div>
 
                                             {/* Labels (X-Axis Items) */}
-                                            <div className="absolute -bottom-12 flex flex-col items-center">
+                                            <div className="absolute -bottom-14 flex flex-col items-center">
                                                 <span className="text-[10px] font-black text-blue-100/90 group-hover:text-blue-50 uppercase tracking-[0.1em] transition-colors">{pos.symbol}</span>
                                                 <span className="text-[9px] text-purple-400/60 font-mono mt-0.5">{pos.adr ? `${formatVal(pos.adr)}%` : '--'}</span>
                                             </div>
@@ -508,7 +508,7 @@
                             </div>
 
                             {/* X-Axis Label */}
-                            <div className="absolute bottom-1 left-0 right-0 flex justify-center h-4 z-0">
+                            <div className="absolute bottom-2 left-0 right-0 flex justify-center h-4 z-0">
                                 <span className="text-[10px] font-black text-blue-400/80 uppercase tracking-[0.2em]">
                                     Positions (Symbol / <span className="text-purple-400/80 font-bold">ADR%</span>)
                                 </span>
