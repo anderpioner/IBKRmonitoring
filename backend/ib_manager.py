@@ -413,10 +413,21 @@ class IBManager:
 
         try:
             from ib_insync import ExecutionFilter
-            # Request executions for the last 8 days to be safe (7 days window)
+            # Try with filter first
             seven_days_ago = (datetime.now() - timedelta(days=8)).strftime("%Y%m%d-00:00:00")
-            filt = ExecutionFilter(time=seven_days_ago)
+            # Request with specific account to be more precise
+            filt = ExecutionFilter(acctCode=self._account_id if hasattr(self, '_account_id') and self._account_id else '', 
+                                  time=seven_days_ago)
             executions = await ib.reqExecutionsAsync(filt)
+            
+            if not executions:
+                logger.info(f"Filtered executions empty for account {self._account_id}, trying global unfiltered...")
+                executions = await ib.reqExecutionsAsync()
+            
+            logger.info(f"Raw executions count from IB: {len(executions)}")
+            if executions:
+                for e in executions[:5]: # Log first 5 for sample
+                    logger.info(f"Execution sample: {e.execution.execId} {e.contract.symbol} {e.execution.time} acct={e.execution.acctNumber}")
             
             today_date = datetime.now().date()
             yesterday_date = today_date - timedelta(days=1)
@@ -429,10 +440,26 @@ class IBManager:
                 "last7": {}
             }
             
-            for exec_report in executions:
+            for exec_report in all_executions:
                 execution = exec_report.execution
                 contract = exec_report.contract
-                exec_date = execution.time.date()
+                
+                # Robust time parsing
+                exec_time = execution.time
+                if isinstance(exec_time, str):
+                    try:
+                        # Normalize string if needed
+                        if '  ' in exec_time:
+                            # 20260315  11:47:39 -> 20260315
+                            exec_time = datetime.strptime(exec_time.split('  ')[0], '%Y%m%d')
+                        else:
+                            # 2026-03-15 or similar
+                            exec_time = pd.to_datetime(exec_time)
+                    except:
+                        logger.warning(f"Could not parse execution time: {exec_time}")
+                        continue
+                
+                exec_date = exec_time.date() if hasattr(exec_time, 'date') else exec_time
                 
                 # Assign to specific buckets
                 targets = []
@@ -610,6 +637,70 @@ class IBManager:
              self.ma_cache[key] = ((None, None, None), datetime.now() - timedelta(minutes=59))
              return None, None, None
 
+    async def _coro_fetch_ticker_details(self, symbol):
+        ib = self._ib
+        if not ib.isConnected():
+            return {"status": "error", "message": "IB is not connected."}
+        
+        try:
+            from ib_insync import Stock
+            contract = Stock(str(symbol).upper().strip(), 'SMART', 'USD')
+            qualified = await ib.qualifyContractsAsync(contract)
+            if not qualified:
+                return {"status": "error", "message": f"Could not qualify contract for {symbol}"}
+            
+            contract = qualified[0]
+            
+            # Request market data for price
+            ib.reqMktData(contract, '', False, False)
+            await asyncio.sleep(0.5) # Wait for some ticks
+            
+            ticker = ib.ticker(contract)
+            market_price = 0.0
+            if ticker:
+                for attr in ['marketPrice', 'last', 'close', 'bid']:
+                    try:
+                        if attr == 'marketPrice': val = ticker.marketPrice()
+                        else: val = getattr(ticker, attr, None)
+                        if val and not pd.isna(val) and val > 0:
+                            market_price = val
+                            break
+                    except: pass
+            
+            # Fetch historical data for ATR(14) and Price Fallback
+            bars = await ib.reqHistoricalDataAsync(
+                contract, endDateTime='', durationStr='1 M',
+                barSizeSetting='1 day', whatToShow='TRADES', useRTH=True
+            )
+            
+            # Additional fallback: last historical bar close
+            if market_price == 0.0 and bars:
+                market_price = bars[-1].close
+
+            atr = 0.0
+            if bars and len(bars) >= 15:
+                tr_values = []
+                for i in range(1, len(bars)):
+                    tr = max(
+                        bars[i].high - bars[i].low,
+                        abs(bars[i].high - bars[i-1].close),
+                        abs(bars[i].low - bars[i-1].close)
+                    )
+                    tr_values.append(tr)
+                
+                if len(tr_values) >= 14:
+                    atr = sum(tr_values[-14:]) / 14
+            
+            return {
+                "status": "success",
+                "symbol": symbol,
+                "price": market_price,
+                "atr": atr
+            }
+        except Exception as e:
+            logger.error(f"Error in _coro_fetch_ticker_details for {symbol}: {e}")
+            return {"status": "error", "message": str(e)}
+
     def _fetch_yfinance_history(self, symbol):
          try:
              import yfinance as yf
@@ -688,3 +779,10 @@ class IBManager:
             self._coro_fetch_data(account_id, ma_period), self._ib_loop
         )
         return await loop.run_in_executor(None, future.result, 60)
+
+    async def fetch_ticker_details(self, symbol):
+        loop = asyncio.get_event_loop()
+        future = asyncio.run_coroutine_threadsafe(
+            self._coro_fetch_ticker_details(symbol), self._ib_loop
+        )
+        return await loop.run_in_executor(None, future.result, 30)

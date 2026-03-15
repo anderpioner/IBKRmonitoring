@@ -45,6 +45,9 @@ class DataRequest(BaseModel):
     accountId: str
     maPeriod: int = 20
 
+class TickerDetailsRequest(BaseModel):
+    symbol: str
+
 @app.get("/api/status")
 async def get_status():
     mgr = app.state.ib_manager
@@ -83,6 +86,17 @@ async def get_data(req: DataRequest):
         raise HTTPException(status_code=400, detail="IB not connected")
     
     res = await mgr.fetch_data(req.accountId, req.maPeriod)
+    if res["status"] == "error":
+        raise HTTPException(status_code=500, detail=res["message"])
+    return res
+
+@app.post("/api/ticker-details")
+async def get_ticker_details(req: TickerDetailsRequest):
+    mgr = app.state.ib_manager
+    if not mgr.ib or not mgr.ib.isConnected():
+        raise HTTPException(status_code=400, detail="IB not connected")
+    
+    res = await mgr.fetch_ticker_details(req.symbol)
     if res["status"] == "error":
         raise HTTPException(status_code=500, detail=res["message"])
     return res
