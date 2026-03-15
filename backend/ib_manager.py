@@ -440,7 +440,7 @@ class IBManager:
                 "last7": {}
             }
             
-            for exec_report in all_executions:
+            for exec_report in executions:
                 execution = exec_report.execution
                 contract = exec_report.contract
                 
@@ -513,12 +513,14 @@ class IBManager:
                         pnl = (s_p - b_p) * closed_qty
                         side = "Long" if data["firstSide"] == 'BOT' else "Short"
                         
+                        last_trade_time = max(data["buys"]["lastTime"], data["sells"]["lastTime"])
                         result[day_key]["closed"].append({
                             "symbol": symbol,
                             "side": side,
                             "shares": closed_qty,
                             "pnl": pnl,
-                            "time": max(data["buys"]["lastTime"], data["sells"]["lastTime"]).strftime('%H:%M:%S') if day_key != "last7" else max(data["buys"]["lastTime"], data["sells"]["lastTime"]).strftime('%m/%d %H:%M')
+                            "date": last_trade_time.strftime('%Y-%m-%d'),
+                            "time": last_trade_time.strftime('%H:%M:%S')
                         })
                     
                     # 2. Active Activity (Net remaining) - relevant for today/yesterday primarily
@@ -531,6 +533,7 @@ class IBManager:
                             "side": "BOT",
                             "shares": remaining_b,
                             "avgPrice": b_p,
+                            "date": data["buys"]["lastTime"].strftime('%Y-%m-%d'),
                             "time": data["buys"]["lastTime"].strftime('%H:%M:%S')
                         })
                     elif remaining_s > 0:
@@ -539,6 +542,7 @@ class IBManager:
                             "side": "SLD",
                             "shares": remaining_s,
                             "avgPrice": s_p,
+                            "date": data["sells"]["lastTime"].strftime('%Y-%m-%d'),
                             "time": data["sells"]["lastTime"].strftime('%H:%M:%S')
                         })
                 
