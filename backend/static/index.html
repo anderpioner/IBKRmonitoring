@@ -1393,7 +1393,7 @@
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
                                                 <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-blue-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
+                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
                                                 <th className="w-[23%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Avg Price</th>
                                                 <th className="w-[20%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">Last Fill</th>
                                             </tr>
@@ -1415,7 +1415,7 @@
                                                         <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             {isPrivacyMode ? "***" : trade.shares.toLocaleString()}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/50">
+                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             {trade.date}
                                                         </td>
                                                         <td className="px-6 py-4 text-center font-mono text-blue-200/70">
@@ -1448,7 +1448,7 @@
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
                                                 <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-emerald-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
+                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
                                                 <th className="w-[23%] px-6 py-4 text-[11px] font-black text-emerald-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">PNL</th>
                                                 <th className="w-[20%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">% of PS</th>
                                             </tr>
@@ -1470,7 +1470,7 @@
                                                         <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             {isPrivacyMode ? "***" : trade.shares.toLocaleString()}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-emerald-400/50 text-[12px]">
+                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             {trade.date}
                                                         </td>
                                                         <td className={`px-6 py-4 text-center font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
