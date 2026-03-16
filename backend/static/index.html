@@ -108,6 +108,7 @@
         const ChevronLeft = (p) => <RawChevronLeftIcon {...p} />;
         const ChevronRight = (p) => <RawChevronRightIcon {...p} />;
         const Calculator = (p) => <RawCalculatorIcon {...p} />;
+        const X = (p) => <RawXIcon {...p} />;
 
         // Custom Inline Icons for reliable rendering
         const SvgWrapper = ({ children, className }) => (
@@ -159,6 +160,7 @@
 
         const PositionSizerContent = ({ principalState, onClose, isStandalone }) => {
             const [ticker, setTicker] = useState("");
+            const [side, setSide] = useState("LONG"); // LONG or SHORT
             const [risk, setRisk] = useState(0.3);
             const [atr, setAtr] = useState("");
             const [price, setPrice] = useState("");
@@ -179,7 +181,10 @@
                             if (data.status === "success" && data.price > 0) {
                                 setPrice(data.price.toFixed(2));
                                 setAtr(data.atr.toFixed(2));
-                                setStopPrice((data.price - 0.3 * data.atr).toFixed(2));
+                                const recStop = side === "LONG" 
+                                    ? (data.price - 0.3 * data.atr) 
+                                    : (data.price + 0.3 * data.atr);
+                                setStopPrice(recStop.toFixed(2));
                             } else {
                                 alert(data.message || "Could not fetch ticker details");
                             }
@@ -251,14 +256,30 @@
                             {/* Ticker */}
                             <div>
                                 <label className="text-[10px] text-blue-200/70 uppercase font-black tracking-[0.2em] mb-3 block">Ticker Symbol</label>
-                                <input 
-                                    type="text" 
-                                    value={ticker}
-                                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                                    onKeyDown={handleTickerEnter}
-                                    placeholder="EX: NVDA"
-                                    className="w-full bg-blue-950/10 rounded-2xl p-4 border border-blue-900/30 text-blue-50 font-bold focus:ring-1 focus:ring-cyan-500/40 outline-none transition-all placeholder:text-blue-950/40 text-lg uppercase"
-                                />
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={ticker}
+                                        onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                                        onKeyDown={handleTickerEnter}
+                                        placeholder="ENTER SYMBOL..."
+                                        className="w-full bg-blue-950/10 rounded-2xl p-4 border border-blue-900/30 text-blue-50 font-bold focus:ring-1 focus:ring-cyan-500/40 outline-none transition-all placeholder:text-blue-200/20 text-lg uppercase"
+                                    />
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 bg-blue-950/40 rounded-xl p-1 border border-blue-900/20">
+                                        <button 
+                                            onClick={() => setSide('LONG')}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'LONG' ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.2)] border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            LONG
+                                        </button>
+                                        <button 
+                                            onClick={() => setSide('SHORT')}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'SHORT' ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.2)] border border-rose-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                                        >
+                                            SHORT
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="flex justify-between mt-2">
                                     <p className="text-[9px] text-blue-400/60 uppercase tracking-widest">Hit Enter to sync</p>
                                     <div className="flex gap-2">
@@ -309,13 +330,18 @@
                                     <div className="flex justify-between mb-2">
                                         <label className="text-[10px] text-orange-400 uppercase font-black tracking-[0.2em]">Stop Price</label>
                                         <span className="text-[11px] text-orange-500/90 uppercase font-black tracking-wider">
-                                            Price - (0.3 × ATR) {atr && price ? (
+                                            Price {side === 'LONG' ? '-' : '+'} (0.3 × ATR) {atr && price ? (
                                                 <button 
-                                                    onClick={() => setStopPrice((Number(price) - 0.3 * Number(atr)).toFixed(2))}
+                                                    onClick={() => {
+                                                        const val = side === 'LONG' 
+                                                            ? (Number(price) - 0.3 * Number(atr))
+                                                            : (Number(price) + 0.3 * Number(atr));
+                                                        setStopPrice(val.toFixed(2));
+                                                    }}
                                                     className="ml-1 text-cyan-400 hover:text-cyan-300 transition-colors border-b border-cyan-400/30 text-xs font-bold"
                                                     title="Click to reset to recommended value"
                                                 >
-                                                    [${(Number(price) - 0.3 * Number(atr)).toFixed(2)}]
+                                                    [${(side === 'LONG' ? (Number(price) - 0.3 * Number(atr)) : (Number(price) + 0.3 * Number(atr))).toFixed(2)}]
                                                 </button>
                                             ) : ''}
                                         </span>
@@ -529,7 +555,7 @@
             );
         };
 
-        const AlertTerminal = ({ alerts }) => {
+        const AlertTerminal = ({ alerts, onClear }) => {
             const list = alerts || [];
             
             // Group the alerts into priority buckets
@@ -560,7 +586,12 @@
                                                 [{alert.time}]
                                             </td>
                                             <td className={`py-1 px-3 text-[14px] ${alert.type === 'CRITICAL' ? 'text-red-300' : (alert.type === 'ALERT' ? 'text-amber-100/90' : 'text-blue-100/70')} group-hover:text-blue-50 transition-colors`}>
-                                                {alert.message}
+                                                {alert.message.includes('RESOLVED') ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-black rounded uppercase tracking-widest border border-emerald-500/30">Resolved</span>
+                                                        {alert.message.replace('RESOLVED: ', '')}
+                                                    </span>
+                                                ) : alert.message}
                                             </td>
                                             <td className="py-1 px-3 text-right hidden sm:table-cell">
                                                 <div className="flex justify-end gap-1 opacity-10 group-hover:opacity-100 transition-opacity">
@@ -595,7 +626,18 @@
                                 </div>
                             </div>
                             <div className="flex items-center gap-4 text-[11px] font-mono text-blue-500/40 uppercase tracking-widest">
-                                <span>Buffer: <span className="text-emerald-400">{list.length} MSG</span></span>
+                                <button 
+                                    onClick={() => {
+                                        if (confirm("Clear system log history? Active critical alerts will remain tracked.")) {
+                                            onClear();
+                                        }
+                                    }}
+                                    className="px-2 py-1 bg-blue-500/5 hover:bg-red-500/10 text-blue-300/40 hover:text-red-400 border border-blue-500/10 hover:border-red-500/30 rounded transition-all active:scale-95 flex items-center gap-1.5 group/btn"
+                                >
+                                    <RawXIcon className="w-3 h-3 group-hover/btn:rotate-90 transition-transform" />
+                                    Clear history
+                                </button>
+                                <span className="hidden sm:inline">Buffer: <span className="text-emerald-400">{list.length} MSG</span></span>
                                 <span className="hidden md:inline">Node: BR_SAOSP_X1</span>
                             </div>
                         </div>
@@ -772,6 +814,22 @@
                 await fetch(`${API_BASE}/disconnect`, { method: 'POST' });
                 setConnectionStatus(false);
                 setData(null);
+            };
+
+            const clearAlerts = async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/clear-alerts`, { method: 'POST' });
+                    if (res.ok) {
+                        setSystemAlerts([]);
+                        // Immediately fetch fresh data to sync the 1-line "cleared" log from backend
+                        fetchData(true);
+                    } else {
+                        const err = await res.json();
+                        alert("Failed to clear log: " + (err.detail || "Server error"));
+                    }
+                } catch (e) {
+                    console.error("Failed to clear alerts:", e);
+                }
             };
 
             // Regular fetch — skips if one is already in progress (used by interval)
@@ -993,6 +1051,16 @@
                                             <span className="text-blue-100">{refreshInterval}s</span>
                                         </div>
                                     </div>
+
+                                    {connectionStatus && (
+                                        <button 
+                                            onClick={() => fetchData(true)} 
+                                            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border transition-all duration-300 active:scale-95 ${refreshing ? 'bg-blue-600/20 border-blue-500/40 text-blue-300 cursor-wait' : 'bg-blue-950/20 border-blue-900/30 text-blue-400 hover:bg-blue-900/40 hover:text-blue-200 cursor-pointer shadow-lg hover:shadow-blue-500/10'}`}
+                                        >
+                                            <RawRefreshCcwIcon className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1400,12 +1468,13 @@
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-blue-950/10 border-b border-blue-900/10">
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
-                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
+                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
+                                                <th className="w-[10%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
+                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
-                                                <th className="w-[23%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Avg Price</th>
-                                                <th className="w-[20%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">Last Fill</th>
+                                                <th className="w-[18%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Avg Price</th>
+                                                <th className="w-[17%] px-6 py-4 text-[11px] font-black text-amber-500/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Taxas</th>
+                                                <th className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">Last Fill</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-blue-900/5 text-sm">
@@ -1431,6 +1500,9 @@
                                                         <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             ${formatVal(trade.avgPrice)}
                                                         </td>
+                                                        <td className="px-6 py-4 text-center font-mono text-amber-400/60">
+                                                            {isPrivacyMode ? "***" : `$${formatVal(trade.fees)}`}
+                                                        </td>
                                                         <td className="px-6 py-4 text-right font-mono text-blue-400/50">
                                                             {trade.time}
                                                         </td>
@@ -1455,12 +1527,13 @@
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-blue-950/10 border-b border-blue-900/10">
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
-                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
-                                                <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
+                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30">Ticker</th>
+                                                <th className="w-[10%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Side</th>
+                                                <th className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Quantity</th>
                                                 <th className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Date</th>
-                                                <th className="w-[23%] px-6 py-4 text-[11px] font-black text-emerald-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">PNL</th>
-                                                <th className="w-[20%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">% of PS</th>
+                                                <th className="w-[18%] px-6 py-4 text-[11px] font-black text-emerald-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">PNL</th>
+                                                <th className="w-[17%] px-6 py-4 text-[11px] font-black text-amber-500/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30">Taxas</th>
+                                                <th className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30">% of PS</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-blue-900/5 text-sm">
@@ -1486,6 +1559,9 @@
                                                         <td className={`px-6 py-4 text-center font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.pnl)}`}
                                                         </td>
+                                                        <td className="px-6 py-4 text-center font-mono text-amber-400/60">
+                                                            {isPrivacyMode ? "***" : `$${formatVal(trade.fees)}`}
+                                                        </td>
                                                         <td className="px-6 py-4 text-right font-mono text-blue-400/50">
                                                             {data.principalState ? `${(trade.pnl / data.principalState * 100).toFixed(2)}%` : '--'}
                                                         </td>
@@ -1505,7 +1581,7 @@
                         </section>
 
                         {/* System Alerts & News Terminal */}
-                        <AlertTerminal alerts={systemAlerts} />
+                        <AlertTerminal alerts={systemAlerts} onClear={clearAlerts} />
 
                         {/* FAQ Section */}
                         <section className="mt-8">

@@ -23,6 +23,7 @@ class IBManager:
         self._ib_loop: asyncio.AbstractEventLoop = None
         self._ib_thread: threading.Thread = None
         self._ib: IB = None
+        self._commission_map = {}  # execId -> commission
         self.ma_cache = {}  # key: (conId, period) → (value, timestamp)
         self.persistent_cache_file = "metrics_cache.json"
         self._load_persistent_cache()
@@ -32,6 +33,7 @@ class IBManager:
             {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "IBKR monitoring engine active."}
         ]
         self._triggered_alerts = {} # date_str -> set()
+        self._active_critical_alerts = set() # key -> message
         self._earnings_cache = {}  # symbol -> {date, timestamp}
         self._start_ib_thread()
 
@@ -65,6 +67,7 @@ class IBManager:
         self._ib_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._ib_loop)
         self._ib = IB()
+        self._ib.commissionReportEvent += self._on_commission_report
         self.hist_semaphore = asyncio.Semaphore(3)  # Maximum 3 concurrent historical requests
         self._ready.set()
         logger.info("IB background loop is running.")
@@ -115,9 +118,16 @@ class IBManager:
             "type": alert_type.upper(),
             "message": message
         })
-        # Keep only the last 50 alerts
-        if len(self._alerts) > 50:
-            self._alerts = self._alerts[-50:]
+        # Keep only the last 100 alerts
+        if len(self._alerts) > 100:
+            self._alerts = self._alerts[-100:]
+
+    def clear_alerts(self):
+        """Clears the internal alert buffer except for active critical issues."""
+        self._alerts = [
+            {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "Log buffer cleared by user."}
+        ]
+        return {"status": "success"}
 
 
     async def _coro_fetch_data(self, account_id, ma_period=20):
@@ -370,6 +380,78 @@ class IBManager:
             total_abs_market_value = sum(abs(p["pos"] * p["price"]) for p in position_data)
             total_allocated_cost = sum(abs(p["pos"] * p["avgCost"]) for p in position_data)
 
+            # --- CRITICAL STOP ORDER ALERTS ---
+            portfolio_symbols = {p["symbol"] for p in position_data}
+            stop_orders_by_symbol = {}
+            for trade in active_trades:
+                ot = (trade.order.orderType or "").upper()
+                # Broaden stop order detection
+                if ot in ['STP', 'STP LMT', 'TRAIL', 'TRAIL LIMIT', 'TRAILLMT', 'STOP', 'STOP LIMIT', 'TRAILING STOP', 'TRAIL LMT']:
+                    s = trade.contract.symbol
+                    if s not in stop_orders_by_symbol:
+                        stop_orders_by_symbol[s] = []
+                    stop_orders_by_symbol[s].append(trade)
+                else:
+                    # Log other orders for debugging if needed
+                    logger.debug(f"Skipping non-stop order type for alert check: {trade.contract.symbol} {ot}")
+
+            current_run_critical_keys = set()
+
+            for sym, trades_list in stop_orders_by_symbol.items():
+                total_stop_qty = sum(t.order.totalQuantity for t in trades_list)
+                
+                # Check 1: Stop on asset not in portfolio
+                if sym not in portfolio_symbols:
+                    key = f"{sym}-orphan-stop"
+                    current_run_critical_keys.add(key)
+                    if key not in self._active_critical_alerts:
+                        self._add_alert("CRITICAL", f"Orphan Stop Order: {sym} ({total_stop_qty} shares) has no matching position in portfolio.")
+                        self._active_critical_alerts.add(key)
+                else:
+                    # Find matching position
+                    pos_obj = next(p for p in position_data if p["symbol"] == sym)
+                    abs_pos = abs(pos_obj["pos"])
+                    
+                    # Check 2: Size mismatch
+                    if total_stop_qty != abs_pos:
+                        key = f"{sym}-stop-size-mismatch"
+                        current_run_critical_keys.add(key)
+                        if key not in self._active_critical_alerts:
+                            self._add_alert("CRITICAL", f"Stop Size Mismatch: {sym} has {abs_pos} shares, but stop order is for {total_stop_qty} shares.")
+                            self._active_critical_alerts.add(key)
+                    
+                    # Check 3: Non-GTC order
+                    for t in trades_list:
+                        tif = (t.order.tif or "").upper()
+                        if tif != 'GTC':
+                            key = f"{sym}-stop-not-gtc-{t.order.orderId}"
+                            current_run_critical_keys.add(key)
+                            if key not in self._active_critical_alerts:
+                                self._add_alert("CRITICAL", f"Critical Stop Parameter: {sym} stop order is NOT GTC (TIF: {tif}).")
+                                self._active_critical_alerts.add(key)
+
+            # Check 4: Missing stop order for position
+            for p in position_data:
+                sym = p["symbol"]
+                if sym not in stop_orders_by_symbol:
+                    key = f"{sym}-missing-stop"
+                    current_run_critical_keys.add(key)
+                    if key not in self._active_critical_alerts:
+                        self._add_alert("CRITICAL", f"Missing Stop: {sym} ({p['pos']} shares) has NO active stop order.")
+                        self._active_critical_alerts.add(key)
+
+            # Detect RESOLVED issues
+            resolved_keys = self._active_critical_alerts - current_run_critical_keys
+            for key in resolved_keys:
+                # Extract some context from the key if possible, or just say resolved
+                parts = key.split('-')
+                sym = parts[0]
+                reason = " ".join(parts[1:]).replace('size mismatch', 'size').replace('not gtc', 'TIF parameter').upper()
+                self._add_alert("INFO", f"RESOLVED: {sym} stop order issue ({reason}) has been corrected.")
+                self._active_critical_alerts.remove(key)
+            # ----------------------------------
+
+
             weighted_adr = 0.0
             if total_abs_market_value > 0:
                 weighted_adr = sum(
@@ -421,13 +503,19 @@ class IBManager:
             executions = await ib.reqExecutionsAsync(filt)
             
             if not executions:
-                logger.info(f"Filtered executions empty for account {self._account_id}, trying global unfiltered...")
+                logger.info(f"Filtered executions empty for account {self._account_id if hasattr(self, '_account_id') else ''}, trying global unfiltered...")
                 executions = await ib.reqExecutionsAsync()
+            
+            # Brief sleep to allow commissionReport events to be processed
+            await asyncio.sleep(0.5)
             
             logger.info(f"Raw executions count from IB: {len(executions)}")
             if executions:
                 for e in executions[:5]: # Log first 5 for sample
-                    logger.info(f"Execution sample: {e.execution.execId} {e.contract.symbol} {e.execution.time} acct={e.execution.acctNumber}")
+                    comm_val = "N/A"
+                    if hasattr(e, 'commissionReport') and e.commissionReport:
+                        comm_val = e.commissionReport.commission
+                    logger.info(f"Execution sample: {e.execution.execId} {e.contract.symbol} {e.execution.time} acct={e.execution.acctNumber} comm={comm_val}")
             
             today_date = datetime.now().date()
             yesterday_date = today_date - timedelta(days=1)
@@ -474,8 +562,8 @@ class IBManager:
                 for t in targets:
                     if symbol not in day_data[t]:
                         day_data[t][symbol] = {
-                            "buys": {"shares": 0, "totalValue": 0.0, "lastTime": None},
-                            "sells": {"shares": 0, "totalValue": 0.0, "lastTime": None},
+                            "buys": {"shares": 0, "totalValue": 0.0, "totalCommission": 0.0, "lastTime": None},
+                            "sells": {"shares": 0, "totalValue": 0.0, "totalCommission": 0.0, "lastTime": None},
                             "firstTime": execution.time,
                             "firstSide": execution.side
                         }
@@ -485,6 +573,18 @@ class IBManager:
                     group = sym_data[side_key]
                     group["shares"] += execution.shares
                     group["totalValue"] += (execution.shares * execution.price)
+                    
+                    # Commission retrieval: 
+                    # 1. Try linked report
+                    # 2. Try our manual map (more robust for async arrival)
+                    comm = 0.0
+                    if hasattr(exec_report, 'commissionReport') and exec_report.commissionReport and exec_report.commissionReport.commission > 0:
+                        comm = exec_report.commissionReport.commission
+                    elif execution.execId in self._commission_map:
+                        comm = self._commission_map[execution.execId]
+                    
+                    group["totalCommission"] += comm
+                    
                     if group["lastTime"] is None or execution.time > group["lastTime"]:
                         group["lastTime"] = execution.time
                     
@@ -506,6 +606,10 @@ class IBManager:
                     b_p = data["buys"]["totalValue"] / b_q if b_q > 0 else 0
                     s_p = data["sells"]["totalValue"] / s_q if s_q > 0 else 0
                     
+                    # Commission pro-rating
+                    b_comm_total = data["buys"]["totalCommission"]
+                    s_comm_total = data["sells"]["totalCommission"]
+                    
                     closed_qty = min(b_q, s_q)
                     
                     # 1. Realized Trade
@@ -513,12 +617,20 @@ class IBManager:
                         pnl = (s_p - b_p) * closed_qty
                         side = "Long" if data["firstSide"] == 'BOT' else "Short"
                         
-                        last_trade_time = max(data["buys"]["lastTime"], data["sells"]["lastTime"])
+                        # Calculate fees portion for the closed part
+                        b_fees_part = (b_comm_total * (closed_qty / b_q)) if b_q > 0 else 0
+                        s_fees_part = (s_comm_total * (closed_qty / s_q)) if s_q > 0 else 0
+                        closed_fees = b_fees_part + s_fees_part
+                        
+                        last_trade_time = max(data["buys"]["lastTime"] or datetime.min, data["sells"]["lastTime"] or datetime.min)
+                        if last_trade_time == datetime.min: last_trade_time = datetime.now() # Fallback
+
                         result[day_key]["closed"].append({
                             "symbol": symbol,
                             "side": side,
                             "shares": closed_qty,
                             "pnl": pnl,
+                            "fees": closed_fees,
                             "date": last_trade_time.strftime('%Y-%m-%d'),
                             "time": last_trade_time.strftime('%H:%M:%S')
                         })
@@ -528,20 +640,24 @@ class IBManager:
                     remaining_s = s_q - closed_qty
                     
                     if remaining_b > 0:
+                        active_fees = b_comm_total * (remaining_b / b_q)
                         result[day_key]["active"].append({
                             "symbol": symbol,
                             "side": "BOT",
                             "shares": remaining_b,
                             "avgPrice": b_p,
+                            "fees": active_fees,
                             "date": data["buys"]["lastTime"].strftime('%Y-%m-%d'),
                             "time": data["buys"]["lastTime"].strftime('%H:%M:%S')
                         })
                     elif remaining_s > 0:
+                        active_fees = s_comm_total * (remaining_s / s_q)
                         result[day_key]["active"].append({
                             "symbol": symbol,
                             "side": "SLD",
                             "shares": remaining_s,
                             "avgPrice": s_p,
+                            "fees": active_fees,
                             "date": data["sells"]["lastTime"].strftime('%Y-%m-%d'),
                             "time": data["sells"]["lastTime"].strftime('%H:%M:%S')
                         })
@@ -762,6 +878,14 @@ class IBManager:
             logger.error(f"Background earnings fetch failed for {symbol}: {e}")
             self._earnings_cache[symbol] = {"date": "Unknown", "ts": datetime.now()}
 
+    def _on_commission_report(self, trade, fill, report):
+        """Handle incoming commission reports and store them in the map."""
+        try:
+            if report and report.execId:
+                self._commission_map[report.execId] = report.commission
+        except Exception as e:
+            logger.error(f"Error in _on_commission_report: {e}")
+
     async def connect(self, host='127.0.0.1', port=7496, client_id=10):
         loop = asyncio.get_event_loop()
         future = asyncio.run_coroutine_threadsafe(
@@ -770,6 +894,8 @@ class IBManager:
         return await loop.run_in_executor(None, future.result, 30)
 
     def disconnect(self):
+        """Disconnects from IB and clears active alert state to allow re-triggering on next session."""
+        self._active_critical_alerts.clear()
         if self._ib and self._ib.isConnected():
             try:
                 self._ib.disconnect()

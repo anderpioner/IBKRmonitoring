@@ -101,5 +101,10 @@ async def get_ticker_details(req: TickerDetailsRequest):
         raise HTTPException(status_code=500, detail=res["message"])
     return res
 
+@app.post("/api/clear-alerts")
+async def clear_alerts():
+    mgr = app.state.ib_manager
+    return mgr.clear_alerts()
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
