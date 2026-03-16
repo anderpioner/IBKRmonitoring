@@ -523,6 +523,13 @@
                                                 </div>
                                             </div>
 
+                                            {/* % of PS Label */}
+                                            {data.principalState > 0 && (
+                                                <div className="mb-2 text-[12px] font-mono text-blue-400/50 whitespace-nowrap">
+                                                    {isPrivacyMode ? "***" : `${((Math.abs(pos.pos * pos.avgCost) / data.principalState) * 100).toFixed(2)}% of PS`}
+                                                </div>
+                                            )}
+
                                             {/* Bar Container */}
                                             <div className="w-full relative flex flex-col justify-end overflow-hidden rounded-t-lg bg-blue-600/10 border border-blue-900/20 hover:border-blue-500/40 transition-all cursor-pointer group-hover:scale-[1.02]" style={{ height: `${Math.max(5, (heightBase * 0.85))}%` }}>
                                                 {/* Profit Segment (Gains at risk) - TOP */}
