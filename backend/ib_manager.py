@@ -180,16 +180,17 @@ class IBManager:
             # SERVE METRICS FROM CACHE IMMEDIATELY
             # These are pure cache lookups - instant
             metrics_results = []
+            today_str = datetime.now().strftime('%Y-%m-%d')
             for item in portfolio_items:
                 contract = item.contract
                 cid = str(contract.conId)
-                results = (None, None, None)
+                results = (None, None, None, None)
                 
                 # Check persistent cache (today's)
                 if cid in self.persistent_cache:
                     cached = self.persistent_cache[cid]
-                    if cached.get("date") == datetime.now().strftime('%Y-%m-%d'):
-                        results = (cached.get("ma10"), cached.get("ma20"), cached.get("adr"))
+                    if cached.get("date") == today_str:
+                        results = (cached.get("ma10"), cached.get("ma20"), cached.get("adr"), cached.get("low"))
                 
                 # Check in-memory session cache
                 key = (cid, 'metrics10_20')
@@ -201,7 +202,8 @@ class IBManager:
                 metrics_results.append(results)
                 
                 # TRIGGER BACKGROUND FETCH IF STALE/MISSING
-                if results[0] is None:
+                # Also fetch if low is missing (new feature)
+                if results[0] is None or results[3] is None:
                     asyncio.create_task(self._coro_historical_metrics(contract))
 
             # Request fresh open orders to get updated stop prices from TWS
@@ -249,7 +251,7 @@ class IBManager:
                 if market_price == 0.0 and item.marketPrice and item.marketPrice > 0:
                     market_price = item.marketPrice
 
-                ma10, ma20, adr = metrics_results[i] if i < len(metrics_results) else (None, None, None)
+                ma10, ma20, adr, daily_low = metrics_results[i] if i < len(metrics_results) else (None, None, None, None)
 
                 # Use the chosen MA period for risk/threshold calculation
                 ma_value = ma10 if ma_period == 10 else ma20
@@ -374,18 +376,20 @@ class IBManager:
 
                 # SMA Alerts Check
                 ticker_low = getattr(ticker, 'low', None)
+                # Use ticker.low if available, otherwise fallback to daily_low from historical bars
+                actual_low = ticker_low if (ticker_low and ticker_low > 0 and not pd.isna(ticker_low)) else daily_low
                 
                 # Today's Low touches SMAs
-                if ticker_low and not pd.isna(ticker_low) and ticker_low > 0:
-                    if ma10 and ticker_low <= ma10:
+                if actual_low and not pd.isna(actual_low) and actual_low > 0:
+                    if ma10 and actual_low <= ma10:
                         key = f"{symbol}-touch-10sma"
                         if key not in triggered_for_today:
-                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 10SMA")
+                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 10SMA (Low: {actual_low:.2f})")
                             triggered_for_today.add(key)
-                    if ma20 and ticker_low <= ma20:
+                    if ma20 and actual_low <= ma20:
                         key = f"{symbol}-touch-20sma"
                         if key not in triggered_for_today:
-                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 20SMA")
+                            self._add_alert("ALERT", f"The ticker {symbol} has touched the 20SMA (Low: {actual_low:.2f})")
                             triggered_for_today.add(key)
 
                 # Price negotiated below SMAs
@@ -393,12 +397,12 @@ class IBManager:
                     if ma10 and market_price < ma10:
                         key = f"{symbol}-below-10sma"
                         if key not in triggered_for_today:
-                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 10SMA")
+                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 10SMA (Price: {market_price:.2f})")
                             triggered_for_today.add(key)
                     if ma20 and market_price < ma20:
                         key = f"{symbol}-below-20sma"
                         if key not in triggered_for_today:
-                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 20SMA")
+                            self._add_alert("ALERT", f"The ticker {symbol} is being negotiated below the 20SMA (Price: {market_price:.2f})")
                             triggered_for_today.add(key)
 
 
@@ -714,7 +718,7 @@ class IBManager:
             return {"today": {"active": [], "closed": []}, "yesterday": {"active": [], "closed": []}}
 
     async def _coro_historical_metrics(self, contract):
-        """Fetches 1M of daily bars once, computes and returns (MA10, MA20, ADR20). Uses TRADES data."""
+        """Fetches 1M of daily bars once, computes and returns (MA10, MA20, ADR20, Low). Uses TRADES data."""
         cid = str(contract.conId)
         symbol = contract.symbol
         today_str = datetime.now().strftime('%Y-%m-%d')
@@ -724,15 +728,15 @@ class IBManager:
         if cid in self.persistent_cache:
             cached_data = self.persistent_cache[cid]
             if cached_data.get("date") == today_str:
-                return cached_data.get("ma10"), cached_data.get("ma20"), cached_data.get("adr")
+                return cached_data.get("ma10"), cached_data.get("ma20"), cached_data.get("adr"), cached_data.get("low")
         
         # In-memory cache checkout
         if key in self.ma_cache:
-            (ma10, ma20, adr), ts = self.ma_cache[key]
+            (ma10, ma20, adr, low), ts = self.ma_cache[key]
             if (datetime.now() - ts).total_seconds() < 3600:
-                return ma10, ma20, adr
+                return ma10, ma20, adr, low
 
-        ma10 = ma20 = adr = None
+        ma10 = ma20 = adr = low = None
 
         # 2. Try IBKR API
         try:
@@ -751,10 +755,27 @@ class IBManager:
                 )
 
             if bars and len(bars) >= 10:
+                # Basic averages
                 ma10 = sum(b.close for b in bars[-10:]) / 10
                 if len(bars) >= 20:
                     ma20 = sum(b.close for b in bars[-20:]) / 20
                     adr = 100 * ((sum(b.high / b.low for b in bars[-20:]) / 20) - 1)
+                
+                # Extract Low for the current date if the last bar is today
+                last_bar = bars[-1]
+                # Bars may have date or datetime objects
+                bar_date = last_bar.date
+                if hasattr(bar_date, 'strftime'):
+                    bar_date_str = bar_date.strftime('%Y-%m-%d')
+                else:
+                    bar_date_str = str(bar_date)
+                
+                if bar_date_str == today_str:
+                    low = last_bar.low
+                    logger.info(f"Extracted daily low for {symbol} from historical bars: {low}")
+                else:
+                    logger.info(f"Last bar for {symbol} is from {bar_date_str}, expected {today_str}. Low remains None.")
+                    
         except Exception as e:
             logger.warning(f"Metrics fetch error from IBKR for {symbol}: {e}")
 
@@ -768,6 +789,12 @@ class IBManager:
                     if len(df) >= 20:
                         ma20 = df['Close'].tail(20).mean()
                         adr = 100 * (((df['High'].tail(20) / df['Low'].tail(20)).sum() / 20) - 1)
+                    
+                    # Extract today's low from yfinance if date matches
+                    last_date_str = df.index[-1].strftime('%Y-%m-%d')
+                    if last_date_str == today_str:
+                        low = float(df['Low'].iloc[-1])
+                        
                     logger.info(f"Successfully fetched yfinance fallback for {symbol}")
             except Exception as e:
                 logger.warning(f"yfinance fallback failed for {symbol}: {e}")
@@ -778,12 +805,13 @@ class IBManager:
                  "date": today_str,
                  "ma10": float(ma10) if ma10 else None,
                  "ma20": float(ma20) if ma20 else None,
-                 "adr": float(adr) if adr else None
+                 "adr": float(adr) if adr else None,
+                 "low": float(low) if low else None
              }
              loop = asyncio.get_event_loop()
              loop.run_in_executor(None, self._save_persistent_cache)
              
-             results = (ma10, ma20, adr)
+             results = (ma10, ma20, adr, low)
              self.ma_cache[key] = (results, datetime.now())
              return results
         else:
@@ -791,10 +819,10 @@ class IBManager:
              if cid in self.persistent_cache:
                  cached_data = self.persistent_cache[cid]
                  logger.info(f"Using stale persistent cache for {symbol} from {cached_data.get('date')}")
-                 return cached_data.get("ma10"), cached_data.get("ma20"), cached_data.get("adr")
+                 return cached_data.get("ma10"), cached_data.get("ma20"), cached_data.get("adr"), cached_data.get("low")
                  
-             self.ma_cache[key] = ((None, None, None), datetime.now() - timedelta(minutes=59))
-             return None, None, None
+             self.ma_cache[key] = ((None, None, None, None), datetime.now() - timedelta(minutes=59))
+             return None, None, None, None
 
     async def _coro_fetch_ticker_details(self, symbol):
         ib = self._ib
