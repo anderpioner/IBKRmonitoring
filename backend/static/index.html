@@ -1647,13 +1647,13 @@
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-blue-950/10 border-b border-blue-900/10">
-                                                <th onClick={() => handleSort('active', 'symbol')} className="w-[12%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Ticker<SortIcon tableConfig={activeSort} columnKey="symbol" /></th>
+                                                <th onClick={() => handleSort('active', 'symbol')} className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Ticker<SortIcon tableConfig={activeSort} columnKey="symbol" /></th>
                                                 <th onClick={() => handleSort('active', 'side')} className="w-[10%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Side<SortIcon tableConfig={activeSort} columnKey="side" /></th>
                                                 <th onClick={() => handleSort('active', 'shares')} className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Quantity<SortIcon tableConfig={activeSort} columnKey="shares" /></th>
                                                 <th onClick={() => handleSort('active', 'date')} className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Date<SortIcon tableConfig={activeSort} columnKey="date" /></th>
                                                 <th onClick={() => handleSort('active', 'avgPrice')} className="w-[18%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Avg Price<SortIcon tableConfig={activeSort} columnKey="avgPrice" /></th>
-                                                <th onClick={() => handleSort('active', 'fees')} className="w-[17%] px-6 py-4 text-[11px] font-black text-amber-500/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Taxas<SortIcon tableConfig={activeSort} columnKey="fees" /></th>
-                                                <th onClick={() => handleSort('active', 'time')} className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Last Fill<SortIcon tableConfig={activeSort} columnKey="time" /></th>
+                                                <th onClick={() => handleSort('active', 'fees')} className="w-[17%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Fees<SortIcon tableConfig={activeSort} columnKey="fees" /></th>
+                                                <th onClick={() => handleSort('active', 'time')} className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-right border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Last Fill<SortIcon tableConfig={activeSort} columnKey="time" /></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-blue-900/5 text-sm">
@@ -1670,19 +1670,19 @@
                                                                 {trade.side === 'BOT' ? 'Long' : 'Short'}
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {isPrivacyMode ? "***" : trade.shares.toLocaleString()}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {trade.date}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             ${formatVal(trade.avgPrice)}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-amber-400/60">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.fees)}`}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-mono text-blue-400/50">
+                                                        <td className="px-6 py-4 text-right font-mono text-slate-500">
                                                             {trade.time}
                                                         </td>
                                                     </tr>
@@ -1706,13 +1706,13 @@
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-blue-950/10 border-b border-blue-900/10">
-                                                <th onClick={() => handleSort('closed', 'symbol')} className="w-[12%] px-6 py-4 text-[11px] font-black text-blue-100/80 uppercase tracking-[0.15em] border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Ticker<SortIcon tableConfig={closedSort} columnKey="symbol" /></th>
+                                                <th onClick={() => handleSort('closed', 'symbol')} className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Ticker<SortIcon tableConfig={closedSort} columnKey="symbol" /></th>
                                                 <th onClick={() => handleSort('closed', 'side')} className="w-[10%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Side<SortIcon tableConfig={closedSort} columnKey="side" /></th>
                                                 <th onClick={() => handleSort('closed', 'shares')} className="w-[12%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Quantity<SortIcon tableConfig={closedSort} columnKey="shares" /></th>
                                                 <th onClick={() => handleSort('closed', 'date')} className="w-[15%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Date<SortIcon tableConfig={closedSort} columnKey="date" /></th>
                                                 <th onClick={() => handleSort('closed', 'pnl')} className="w-[18%] px-6 py-4 text-[11px] font-black text-emerald-400/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">PNL<SortIcon tableConfig={closedSort} columnKey="pnl" /></th>
-                                                <th onClick={() => handleSort('closed', 'fees')} className="w-[17%] px-6 py-4 text-[11px] font-black text-amber-500/80 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Taxas<SortIcon tableConfig={closedSort} columnKey="fees" /></th>
-                                                <th onClick={() => handleSort('closed', 'pctOfPs')} className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.15em] text-right border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">% of PS<SortIcon tableConfig={closedSort} columnKey="pctOfPs" /></th>
+                                                <th onClick={() => handleSort('closed', 'fees')} className="w-[17%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-center border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">Fees<SortIcon tableConfig={closedSort} columnKey="fees" /></th>
+                                                <th onClick={() => handleSort('closed', 'pctOfPs')} className="w-[16%] px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] text-right border-b border-blue-900/30 cursor-pointer hover:bg-blue-900/40 transition-colors">% of PS<SortIcon tableConfig={closedSort} columnKey="pctOfPs" /></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-blue-900/5 text-sm">
@@ -1729,19 +1729,19 @@
                                                                 {trade.side}
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {isPrivacyMode ? "***" : trade.shares.toLocaleString()}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-blue-200/70">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {trade.date}
                                                         </td>
                                                         <td className={`px-6 py-4 text-center font-bold font-mono ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.pnl)}`}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center font-mono text-amber-400/60">
+                                                        <td className="px-6 py-4 text-center font-mono text-slate-500">
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.fees)}`}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-mono text-blue-400/50">
+                                                        <td className="px-6 py-4 text-right font-mono text-slate-500">
                                                             {data.principalState ? `${(trade.pnl / data.principalState * 100).toFixed(2)}%` : '--'}
                                                         </td>
                                                     </tr>

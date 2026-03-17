@@ -90,6 +90,15 @@ class IBManager:
                 logger.info(f"Attempt {attempt}: {host}:{port} CID={cid}")
                 await self._ib.connectAsync(host, port, clientId=cid, timeout=10)
                 logger.info(f"Connected with CID={cid}")
+                
+                # Reset alerts and triggered history on new connection
+                self._alerts = [
+                    {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "System Initialization Complete"},
+                    {"time": datetime.now().strftime('%H:%M:%S'), "type": "INFO", "message": "IBKR monitoring engine active."}
+                ]
+                self._triggered_alerts = {}
+                self._active_critical_alerts = set()
+                
                 self._add_alert("INFO", f"Connected to IBKR (Port: {port}, CID: {cid})")
                 
                 # Request all open orders so stop orders from prior sessions are loaded
