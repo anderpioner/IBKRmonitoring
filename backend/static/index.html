@@ -539,46 +539,46 @@
                                     <RawActivityIcon className="w-5 h-5 text-blue-400" />
                                     <h2 className="text-lg font-semibold text-blue-50">Position Exposure & Risk Components</h2>
                                 </div>
-                                <div className="flex flex-wrap bg-blue-950/40 p-1 rounded-xl border border-blue-900/20 gap-1">
+                                <div className="flex flex-wrap bg-[#020617] p-1 rounded-xl border border-blue-900/20 gap-1">
                                     <button 
                                         onClick={() => handleToggleSort('size')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'size' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'size' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         Size {chartSort.key === 'size' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('symbol')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'symbol' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'symbol' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         ABC {chartSort.key === 'symbol' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('pnl')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'pnl' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'pnl' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         PNL {chartSort.key === 'pnl' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('psRisk')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'psRisk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'psRisk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         Open Risk {chartSort.key === 'psRisk' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('risk')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'risk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'risk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         Market's Money {chartSort.key === 'risk' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('tGain')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'tGain' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'tGain' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         T-Gain {chartSort.key === 'tGain' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>
                                     <button 
                                         onClick={() => handleToggleSort('wadr')}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'wadr' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all duration-300 active:scale-95 ${chartSort.key === 'wadr' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
                                     >
                                         WADR {chartSort.key === 'wadr' && (chartSort.direction === 'asc' ? '↑' : '↓')}
                                     </button>

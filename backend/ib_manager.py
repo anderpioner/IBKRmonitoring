@@ -123,12 +123,13 @@ class IBManager:
 
         return {"status": "error", "message": "Could not connect to TWS/Gateway. Check if TWS is open and API is enabled."}
 
-    def _add_alert(self, alert_type, message):
+    def _add_alert(self, alert_type, message, key=None):
         """Adds a new alert to the internal buffer."""
         self._alerts.append({
             "time": datetime.now().strftime('%H:%M:%S'),
             "type": alert_type.upper(),
-            "message": message
+            "message": message,
+            "key": key
         })
         # Keep only the last 100 alerts
         if len(self._alerts) > 100:
@@ -443,7 +444,7 @@ class IBManager:
                     key = f"{sym}-orphan-stop"
                     current_run_critical_keys.add(key)
                     if key not in self._active_critical_alerts:
-                        self._add_alert("CRITICAL", f"Orphan Stop Order: {sym} ({total_stop_qty} shares) has no matching position in portfolio.")
+                        self._add_alert("CRITICAL", f"Orphan Stop Order: {sym} ({total_stop_qty} shares) has no matching position in portfolio.", key=key)
                         self._active_critical_alerts.add(key)
                 else:
                     # Find matching position
@@ -455,7 +456,7 @@ class IBManager:
                         key = f"{sym}-stop-size-mismatch"
                         current_run_critical_keys.add(key)
                         if key not in self._active_critical_alerts:
-                            self._add_alert("CRITICAL", f"Stop Size Mismatch: {sym} has {abs_pos} shares, but stop order is for {total_stop_qty} shares.")
+                            self._add_alert("CRITICAL", f"Stop Size Mismatch: {sym} has {abs_pos} shares, but stop order is for {total_stop_qty} shares.", key=key)
                             self._active_critical_alerts.add(key)
                     
                     # Check 3: Non-GTC order
@@ -465,7 +466,7 @@ class IBManager:
                             key = f"{sym}-stop-not-gtc-{t.order.orderId}"
                             current_run_critical_keys.add(key)
                             if key not in self._active_critical_alerts:
-                                self._add_alert("CRITICAL", f"Critical Stop Parameter: {sym} stop order is NOT GTC (TIF: {tif}).")
+                                self._add_alert("CRITICAL", f"Critical Stop Parameter: {sym} stop order is NOT GTC (TIF: {tif}).", key=key)
                                 self._active_critical_alerts.add(key)
 
             # Check 4: Missing stop order for position
@@ -475,18 +476,22 @@ class IBManager:
                     key = f"{sym}-missing-stop"
                     current_run_critical_keys.add(key)
                     if key not in self._active_critical_alerts:
-                        self._add_alert("CRITICAL", f"Missing Stop: {sym} ({p['pos']} shares) has NO active stop order.")
+                        self._add_alert("CRITICAL", f"Missing Stop: {sym} ({p['pos']} shares) has NO active stop order.", key=key)
                         self._active_critical_alerts.add(key)
 
             # Detect RESOLVED issues
             resolved_keys = self._active_critical_alerts - current_run_critical_keys
-            for key in resolved_keys:
-                # Extract some context from the key if possible, or just say resolved
-                parts = key.split('-')
-                sym = parts[0]
-                reason = " ".join(parts[1:]).replace('size mismatch', 'size').replace('not gtc', 'TIF parameter').upper()
-                self._add_alert("INFO", f"RESOLVED: {sym} stop order issue ({reason}) has been corrected.")
-                self._active_critical_alerts.remove(key)
+            if resolved_keys:
+                for key in resolved_keys:
+                    # Remove the critical alert from the log buffer
+                    self._alerts = [a for a in self._alerts if a.get("key") != key]
+                    
+                    # Log the resolution for the audit trail
+                    parts = key.split('-')
+                    sym = parts[0]
+                    reason = " ".join(parts[1:]).replace('size mismatch', 'size').replace('not gtc', 'TIF parameter').upper()
+                    self._add_alert("INFO", f"RESOLVED: {sym} stop order issue ({reason}) has been corrected.")
+                    self._active_critical_alerts.remove(key)
             # ----------------------------------
 
 
