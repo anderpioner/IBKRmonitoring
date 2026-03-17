@@ -803,7 +803,7 @@
             const [data, setData] = useState(null);
             const [loading, setLoading] = useState(false);
             const [refreshing, setRefreshing] = useState(false);
-            const [maPeriod, setMaPeriod] = useState(20);
+            const [maPeriod, setMaPeriod] = useState(() => { const v = localStorage.getItem('maPeriod'); return v ? parseInt(v) : 20; });
             const [accountId, setAccountId] = useState(() => { return localStorage.getItem('accountId') || ""; });
             const [error, setError] = useState(null);
             const [tradeDayView, setTradeDayView] = useState('today');
@@ -870,7 +870,8 @@
                 return tableConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 inline ml-1" /> : <ChevronDown className="w-3 h-3 inline ml-1" />;
             };
 
-            const maPeriodRef = useRef(20);
+            const initialMa = (() => { const v = localStorage.getItem('maPeriod'); return v ? parseInt(v) : 20; })();
+            const maPeriodRef = useRef(initialMa);
             const accountIdRef = useRef(localStorage.getItem('accountId') || "");
             const refreshingRef = useRef(false);
             const refreshTimeoutRef = useRef(null);
@@ -888,6 +889,10 @@
                 accountIdRef.current = accountId; // Sync ref
             }, [accountId]);
             useEffect(() => { localStorage.setItem('isPrivacyMode', JSON.stringify(isPrivacyMode)); }, [isPrivacyMode]);
+            useEffect(() => { 
+                localStorage.setItem('maPeriod', maPeriod); 
+                maPeriodRef.current = maPeriod; // Ensure ref is always in sync
+            }, [maPeriod]);
             const [isSizerOpen, setIsSizerOpen] = useState(false);
 
             // Standalone Mode Detection for Detached Window
