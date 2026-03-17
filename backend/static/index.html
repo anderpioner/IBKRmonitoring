@@ -482,7 +482,7 @@
                             <div className="flex items-center gap-6">
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 bg-emerald-400 rounded-sm shadow-[0_0_8px_rgba(52,211,153,0.3)]" />
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Floating Profit</span>
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Open Profit</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 bg-orange-400 rounded-sm shadow-[0_0_8px_rgba(251,146,60,0.3)]" />
@@ -1437,11 +1437,11 @@
                                             {data && [...data.positions].sort((a, b) => getSortResult(a,b, posSort.key, posSort.direction)).map((pos) => (
                                                 <tr key={pos.symbol} className="hover:bg-blue-900/10 transition-colors group">
                                                     <td className="px-3 py-4 font-bold text-blue-50 text-center">{pos.symbol}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500">{isPrivacyMode ? "***" : pos.pos.toLocaleString('en-US')}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500">${formatVal(pos.avgCost)}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500">{isPrivacyMode ? "***" : `$${formatVal(Math.abs(pos.pos * pos.avgCost))}`}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500">{data.principalState ? (Math.abs(pos.pos * pos.avgCost) / data.principalState * 100).toFixed(2) + '%' : '--'}</td>
-                                                    <td className="px-3 py-4 text-center text-blue-50">${formatVal(pos.price)}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{isPrivacyMode ? "***" : pos.pos.toLocaleString('en-US')}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">${formatVal(pos.avgCost)}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{isPrivacyMode ? "***" : `$${formatVal(Math.abs(pos.pos * pos.avgCost))}`}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{data.principalState ? (Math.abs(pos.pos * pos.avgCost) / data.principalState * 100).toFixed(2) + '%' : '--'}</td>
+                                                    <td className="px-3 py-4 text-center text-blue-50 font-mono">${formatVal(pos.price)}</td>
                                                     <td className="px-3 py-4 text-center font-mono">
                                                         {pos.stop ? (
                                                             <span className="text-amber-400/80">${formatVal(pos.stop)}</span>
@@ -1453,12 +1453,12 @@
 
                                                     <td className={`px-3 py-4 text-center font-mono ${maPeriod === 10 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma10 ? `$${formatVal(pos.ma10)}` : '--'}</td>
                                                     <td className={`px-3 py-4 text-center font-mono ${maPeriod === 20 ? 'text-cyan-400 font-semibold' : 'text-blue-400/40'}`}>{pos.ma20 ? `$${formatVal(pos.ma20)}` : '--'}</td>
-                                                    <td className={`px-3 py-4 text-center font-semibold ${pos.pnl > 0 ? 'text-cyan-400' : 'text-blue-400/60'}`}>
+                                                    <td className={`px-3 py-4 text-center font-semibold font-mono ${pos.pnl > 0 ? 'text-cyan-400' : 'text-blue-400/60'}`}>
                                                         {isPrivacyMode ? "***" : `$${formatVal(pos.pnl)}`}
                                                     </td>
-                                                    <td className="px-3 py-4 text-center font-bold text-orange-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.psRisk)}`}</td>
-                                                    <td className="px-3 py-4 text-center font-bold text-blue-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.risk)}`}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500">{isPrivacyMode ? "***" : `$${formatVal(pos.tGain)}`}</td>
+                                                    <td className="px-3 py-4 text-center font-bold font-mono text-orange-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.psRisk)}`}</td>
+                                                    <td className="px-3 py-4 text-center font-bold font-mono text-blue-400/80">{isPrivacyMode ? "***" : `$${formatVal(pos.risk)}`}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{isPrivacyMode ? "***" : `$${formatVal(pos.tGain)}`}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1613,7 +1613,7 @@
                                                         <td className="px-6 py-4 text-center font-mono text-blue-200/70">
                                                             {trade.date}
                                                         </td>
-                                                        <td className={`px-6 py-4 text-center font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        <td className={`px-6 py-4 text-center font-bold font-mono ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.pnl)}`}
                                                         </td>
                                                         <td className="px-6 py-4 text-center font-mono text-amber-400/60">
