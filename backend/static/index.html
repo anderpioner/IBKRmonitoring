@@ -459,24 +459,103 @@
             );
         };
 
-        const PositionChart = ({ data, isPrivacyMode }) => {
+        const PositionChart = ({ data, isPrivacyMode, chartSort, setChartSort }) => {
             if (!data || !data.positions || data.positions.length === 0) return null;
 
             const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-            const maxVal = data.positions.reduce((max, p) => {
+            const getChartSortResult = (a, b) => {
+                let valA, valB;
+                if (chartSort.key === 'size') {
+                    valA = Math.abs((a.pos || 0) * (a.price || 0));
+                    valB = Math.abs((b.pos || 0) * (b.price || 0));
+                } else if (chartSort.key === 'symbol') {
+                    valA = a.symbol || '';
+                    valB = b.symbol || '';
+                } else if (chartSort.key === 'pnl') {
+                    valA = a.pnl || 0;
+                    valB = b.pnl || 0;
+                } else if (chartSort.key === 'psRisk') {
+                    valA = a.psRisk || 0;
+                    valB = b.psRisk || 0;
+                } else if (chartSort.key === 'risk') {
+                    valA = a.risk || 0;
+                    valB = b.risk || 0;
+                } else if (chartSort.key === 'tGain') {
+                    valA = a.tGain || 0;
+                    valB = b.tGain || 0;
+                }
+                
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    return chartSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return chartSort.direction === 'asc' ? valA - valB : valB - valA;
+            };
+
+            const sortedPositions = [...data.positions].sort(getChartSortResult);
+
+            const maxVal = sortedPositions.reduce((max, p) => {
                 const val = Math.abs((p.pos || 0) * (p.price || 0));
                 return Math.max(max, val);
             }, 0);
+
+            const handleToggleSort = (key) => {
+                if (chartSort.key === key) {
+                    setChartSort({ key, direction: chartSort.direction === 'asc' ? 'desc' : 'asc' });
+                } else {
+                    setChartSort({ key, direction: key === 'size' ? 'desc' : 'asc' });
+                }
+            };
 
             return (
                 <section className="mt-8 mb-12" id="position-chart-section">
                     <div className="bg-[#0f172a] border border-blue-900/20 rounded-2xl shadow-2xl p-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-blue-900/10">
-                            <div className="flex items-center gap-2">
-                                <RawActivityIcon className="w-5 h-5 text-blue-400" />
-                                <h2 className="text-lg font-semibold text-blue-50">Position Exposure & Risk Components</h2>
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <RawActivityIcon className="w-5 h-5 text-blue-400" />
+                                    <h2 className="text-lg font-semibold text-blue-50">Position Exposure & Risk Components</h2>
+                                </div>
+                                <div className="flex flex-wrap bg-blue-950/40 p-1 rounded-xl border border-blue-900/20 gap-1">
+                                    <button 
+                                        onClick={() => handleToggleSort('size')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'size' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        Size {chartSort.key === 'size' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleToggleSort('symbol')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'symbol' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        ABC {chartSort.key === 'symbol' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleToggleSort('pnl')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'pnl' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        PNL {chartSort.key === 'pnl' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleToggleSort('psRisk')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'psRisk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        Open Risk {chartSort.key === 'psRisk' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleToggleSort('risk')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'risk' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        Market's Money {chartSort.key === 'risk' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                    <button 
+                                        onClick={() => handleToggleSort('tGain')}
+                                        className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${chartSort.key === 'tGain' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-blue-400/40 hover:text-blue-300'}`}
+                                    >
+                                        T-Gain {chartSort.key === 'tGain' && (chartSort.direction === 'asc' ? '↑' : '↓')}
+                                    </button>
+                                </div>
                             </div>
+
                             
                             {/* Legend */}
                             <div className="flex items-center gap-6">
@@ -499,7 +578,7 @@
                             </div>
 
                             <div className="flex-1 flex items-end gap-3 px-2 overflow-x-auto custom-scrollbar pb-24 ml-14">
-                                {data.positions.map((pos) => {
+                                {sortedPositions.map((pos) => {
                                     const totalValue = Math.abs((pos.pos || 0) * (pos.price || 0));
                                     const totalRisk = pos.risk || 0;
                                     const openRiskVal = pos.psRisk || 0;
@@ -704,6 +783,7 @@
             const [posSort, setPosSort] = useState({ key: 'size', direction: 'desc' });
             const [activeSort, setActiveSort] = useState({ key: 'time', direction: 'desc' });
             const [closedSort, setClosedSort] = useState({ key: 'date', direction: 'desc' });
+            const [chartSort, setChartSort] = useState({ key: 'size', direction: 'desc' });
 
             const handleSort = (table, key) => {
                 const configurations = {
@@ -1469,7 +1549,12 @@
                         </section>
 
                         {/* Position Chart */}
-                        <PositionChart data={data} isPrivacyMode={isPrivacyMode} />
+                        <PositionChart 
+                            data={data} 
+                            isPrivacyMode={isPrivacyMode} 
+                            chartSort={chartSort}
+                            setChartSort={setChartSort}
+                        />
 
                         {/* Today's & Yesterday's Trades Activity */}
                         <section className="mt-8">
