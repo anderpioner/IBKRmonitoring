@@ -1144,7 +1144,7 @@
                                 </button>
                                 {connectionStatus && (
                                     <button onClick={(e) => { e.preventDefault(); console.log('Refresh manually triggered via UI'); fetchData(true); }} className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-xl text-[10px] font-bold uppercase transition-all select-none active:scale-95 ${refreshing ? 'bg-blue-600/20 border-blue-500/40 text-blue-300 cursor-wait' : 'bg-blue-950/30 border-blue-900/40 text-blue-400 hover:bg-blue-900/40 hover:text-blue-200 cursor-pointer'}`}>
-                                        <RawRefreshCcwIcon className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Fetching...' : 'Refresh'}
+                                        <RawRefreshCcwIcon className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> {refreshing ? 'Refreshing...' : 'Refresh'}
                                     </button>
                                 )}
                                 <div className="text-right">

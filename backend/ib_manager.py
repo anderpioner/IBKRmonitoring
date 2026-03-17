@@ -68,7 +68,7 @@ class IBManager:
         asyncio.set_event_loop(self._ib_loop)
         self._ib = IB()
         self._ib.commissionReportEvent += self._on_commission_report
-        self.hist_semaphore = asyncio.Semaphore(3)  # Maximum 3 concurrent historical requests
+        self.hist_semaphore = asyncio.Semaphore(5)  # Increased for faster background fetches
         self._ready.set()
         logger.info("IB background loop is running.")
         self._ib_loop.run_forever()
@@ -95,6 +95,9 @@ class IBManager:
                 # Request all open orders so stop orders from prior sessions are loaded
                 await self._ib.reqAllOpenOrdersAsync()
                 logger.info(f"Open orders loaded: {len(self._ib.openTrades())} trades")
+                
+                # Stabilization Delay: Give the API a moment to be fully ready for queries
+                await asyncio.sleep(1.5)
                 
                 # Fetch available managed accounts
                 managed_accounts = self._ib.managedAccounts()
@@ -174,10 +177,32 @@ class IBManager:
                     ib.reqMktData(contract, '', False, False)
                 await asyncio.sleep(1.0)  # Give IB time to send the first tick
 
-            # Fetch MA10, MA20 and ADR(20) for all positions using a SINGLE historical request per contract
-            hist_tasks = [self._coro_historical_metrics(p.contract) for p in portfolio_items]
-            hist_results = await asyncio.gather(*hist_tasks, return_exceptions=True)
-            hist_results = [r if not isinstance(r, Exception) else (None, None, None) for r in hist_results]
+            # SERVE METRICS FROM CACHE IMMEDIATELY
+            # These are pure cache lookups - instant
+            metrics_results = []
+            for item in portfolio_items:
+                contract = item.contract
+                cid = str(contract.conId)
+                results = (None, None, None)
+                
+                # Check persistent cache (today's)
+                if cid in self.persistent_cache:
+                    cached = self.persistent_cache[cid]
+                    if cached.get("date") == datetime.now().strftime('%Y-%m-%d'):
+                        results = (cached.get("ma10"), cached.get("ma20"), cached.get("adr"))
+                
+                # Check in-memory session cache
+                key = (cid, 'metrics10_20')
+                if key in self.ma_cache:
+                    cached_val, ts = self.ma_cache[key]
+                    if (datetime.now() - ts).total_seconds() < 3600:
+                        results = cached_val
+                
+                metrics_results.append(results)
+                
+                # TRIGGER BACKGROUND FETCH IF STALE/MISSING
+                if results[0] is None:
+                    asyncio.create_task(self._coro_historical_metrics(contract))
 
             # Request fresh open orders to get updated stop prices from TWS
             try:
@@ -224,7 +249,7 @@ class IBManager:
                 if market_price == 0.0 and item.marketPrice and item.marketPrice > 0:
                     market_price = item.marketPrice
 
-                ma10, ma20, adr = hist_results[i] if i < len(hist_results) else (None, None, None)
+                ma10, ma20, adr = metrics_results[i] if i < len(metrics_results) else (None, None, None)
 
                 # Use the chosen MA period for risk/threshold calculation
                 ma_value = ma10 if ma_period == 10 else ma20
@@ -477,7 +502,7 @@ class IBManager:
                 "thresholdGains": threshold_gains,
                 "dynamicGains": total_unrealized_pnl - threshold_gains,
                 "positions": position_data,
-                "trades": await self._coro_fetch_trades(),
+                "trades": await self._coro_fetch_trades(target_acc),
                 "alerts": self._alerts[::-1], # Return alerts in reverse chronological order
                 "lastUpdate": datetime.now().strftime('%H:%M:%S')
             }
@@ -487,7 +512,7 @@ class IBManager:
             logger.error(traceback.format_exc())
             return {"status": "error", "message": str(e)}
 
-    async def _coro_fetch_trades(self):
+    async def _coro_fetch_trades(self, account_id=None):
         """Fetches executions and aggregates them into active activity and closed trades for today, yesterday, and last 7 days."""
         ib = self._ib
         if not ib.isConnected():
@@ -495,27 +520,26 @@ class IBManager:
 
         try:
             from ib_insync import ExecutionFilter
-            # Try with filter first
+            # Using clientId=0 in the filter is crucial to catch trades from all sessions/manual
             seven_days_ago = (datetime.now() - timedelta(days=8)).strftime("%Y%m%d-00:00:00")
-            # Request with specific account to be more precise
-            filt = ExecutionFilter(acctCode=self._account_id if hasattr(self, '_account_id') and self._account_id else '', 
-                                  time=seven_days_ago)
+            filt = ExecutionFilter(clientId=0, time=seven_days_ago)
             executions = await ib.reqExecutionsAsync(filt)
-            
-            if not executions:
-                logger.info(f"Filtered executions empty for account {self._account_id if hasattr(self, '_account_id') else ''}, trying global unfiltered...")
-                executions = await ib.reqExecutionsAsync()
             
             # Brief sleep to allow commissionReport events to be processed
             await asyncio.sleep(0.5)
             
             logger.info(f"Raw executions count from IB: {len(executions)}")
             if executions:
-                for e in executions[:5]: # Log first 5 for sample
+                # Log first 5 for sample
+                target_execs = [e for e in executions if e.execution.acctNumber == account_id]
+                logger.info(f"Executions for account {account_id}: {len(target_execs)}")
+                for e in target_execs[:5]:
                     comm_val = "N/A"
                     if hasattr(e, 'commissionReport') and e.commissionReport:
                         comm_val = e.commissionReport.commission
-                    logger.info(f"Execution sample: {e.execution.execId} {e.contract.symbol} {e.execution.time} acct={e.execution.acctNumber} comm={comm_val}")
+                    logger.info(f"Execution sample: {e.execution.execId} {e.contract.symbol} {e.execution.time} comm={comm_val}")
+                # Use the filtered list for processing
+                executions = target_execs
             
             today_date = datetime.now().date()
             yesterday_date = today_date - timedelta(days=1)
@@ -538,16 +562,31 @@ class IBManager:
                     try:
                         # Normalize string if needed
                         if '  ' in exec_time:
-                            # 20260315  11:47:39 -> 20260315
-                            exec_time = datetime.strptime(exec_time.split('  ')[0], '%Y%m%d')
+                            # 20260315  11:47:39 -> 2026-03-15 11:47:39
+                            exec_time = datetime.strptime(exec_time, '%Y%m%d  %H:%M:%S')
                         else:
                             # 2026-03-15 or similar
-                            exec_time = pd.to_datetime(exec_time)
+                            exec_time = pd.to_datetime(exec_time).to_pydatetime()
                     except:
-                        logger.warning(f"Could not parse execution time: {exec_time}")
-                        continue
+                        try:
+                            # Fallback to date only if full parsing fails
+                            if '  ' in exec_time:
+                                exec_time = datetime.strptime(exec_time.split('  ')[0], '%Y%m%d')
+                            else:
+                                exec_time = pd.to_datetime(exec_time).to_pydatetime()
+                        except:
+                            logger.warning(f"Could not parse execution time: {exec_time}")
+                            continue
                 
-                exec_date = exec_time.date() if hasattr(exec_time, 'date') else exec_time
+                # Ensure it's a datetime object even if it came from pandas
+                if hasattr(exec_time, 'to_pydatetime'):
+                    exec_time = exec_time.to_pydatetime()
+
+                # Use timezone-naive dates for comparison if needed, but keep exec_time for display
+                if hasattr(exec_time, 'tzinfo') and exec_time.tzinfo is not None:
+                    exec_date = exec_time.astimezone(None).date()
+                else:
+                    exec_date = exec_time.date() if hasattr(exec_time, 'date') else exec_time
                 
                 # Assign to specific buckets
                 targets = []
@@ -564,7 +603,7 @@ class IBManager:
                         day_data[t][symbol] = {
                             "buys": {"shares": 0, "totalValue": 0.0, "totalCommission": 0.0, "lastTime": None},
                             "sells": {"shares": 0, "totalValue": 0.0, "totalCommission": 0.0, "lastTime": None},
-                            "firstTime": execution.time,
+                            "firstTime": exec_time,
                             "firstSide": execution.side
                         }
                     
@@ -585,11 +624,11 @@ class IBManager:
                     
                     group["totalCommission"] += comm
                     
-                    if group["lastTime"] is None or execution.time > group["lastTime"]:
-                        group["lastTime"] = execution.time
+                    if group["lastTime"] is None or exec_time > group["lastTime"]:
+                        group["lastTime"] = exec_time
                     
-                    if execution.time < sym_data["firstTime"]:
-                        sym_data["firstTime"] = execution.time
+                    if exec_time < sym_data["firstTime"]:
+                        sym_data["firstTime"] = exec_time
                         sym_data["firstSide"] = execution.side
             
             # Process categories
