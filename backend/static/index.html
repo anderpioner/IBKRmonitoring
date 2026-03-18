@@ -164,6 +164,7 @@
             const [side, setSide] = useState("LONG"); // LONG or SHORT
             const [risk, setRisk] = useState(0.3);
             const [atr, setAtr] = useState("");
+            const [adr, setAdr] = useState("");
             const [price, setPrice] = useState("");
             const [stopPrice, setStopPrice] = useState("");
             const [loading, setLoading] = useState(false);
@@ -182,6 +183,7 @@
                             if (data.status === "success" && data.price > 0) {
                                 setPrice(data.price.toFixed(2));
                                 setAtr(data.atr.toFixed(2));
+                                setAdr(data.adr.toFixed(2));
                                 const recStop = side === "LONG" 
                                     ? (data.price - 0.3 * data.atr) 
                                     : (data.price + 0.3 * data.atr);
@@ -316,10 +318,16 @@
                                 </div>
                             </div>
 
-                            {/* ATR Section (Secondary) */}
-                            <div className="flex justify-between items-center bg-blue-950/5 p-3 rounded-xl border border-blue-900/10">
-                                <label className="text-[9px] text-blue-300/40 uppercase font-black tracking-[0.2em]">ATR (14) Reference</label>
-                                <input type="number" step="0.01" value={atr} onChange={(e) => setAtr(e.target.value)} className="bg-transparent text-emerald-400 font-mono text-sm outline-none text-right w-24" />
+                            {/* ATR & ADR Section */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex justify-between items-center bg-blue-950/5 p-3 rounded-xl border border-blue-900/10">
+                                    <label className="text-[9px] text-blue-300/40 uppercase font-black tracking-[0.2em]">ATR(14)</label>
+                                    <input type="number" step="0.01" value={atr} onChange={(e) => setAtr(e.target.value)} className="bg-transparent text-emerald-400 font-mono text-sm outline-none text-right w-16" />
+                                </div>
+                                <div className="flex justify-between items-center bg-blue-950/5 p-3 rounded-xl border border-blue-900/10">
+                                    <label className="text-[9px] text-purple-400/40 uppercase font-black tracking-[0.2em]">ADR(20)%</label>
+                                    <input type="number" step="0.01" value={adr} onChange={(e) => setAdr(e.target.value)} className="bg-transparent text-purple-400 font-mono text-sm outline-none text-right w-16" />
+                                </div>
                             </div>
 
                             {/* Main Inputs Grid */}
@@ -346,7 +354,7 @@
                                                             : (Number(price) + 0.3 * Number(atr));
                                                         setStopPrice(val.toFixed(2));
                                                     }}
-                                                    className="ml-1 text-cyan-400 hover:text-cyan-300 transition-colors border-b border-cyan-400/30 text-xs font-bold"
+                                                    className="ml-1 text-emerald-400 hover:text-emerald-300 transition-colors border-b border-emerald-400/30 text-xs font-bold"
                                                     title="Click to reset to recommended value"
                                                 >
                                                     [${(side === 'LONG' ? (Number(price) - 0.3 * Number(atr)) : (Number(price) + 0.3 * Number(atr))).toFixed(2)}]
@@ -385,14 +393,23 @@
                                 </div>
                             </div>
                             
-                            {/* Stop Distance as ATR fraction */}
-                            {atr && price && stopPrice && (
-                                <div className="mt-6 text-center">
-                                    <span className="text-[10px] text-blue-400/50 uppercase font-black tracking-[0.2em]">
-                                        Stop Distance: <span className="text-cyan-400/80">{(Math.abs(Number(price) - Number(stopPrice)) / Number(atr)).toFixed(2)} * ATR(14)</span>
-                                    </span>
-                                </div>
-                            )}
+                            {/* Detailed Metrics */}
+                            <div className="mt-8 grid grid-cols-2 w-full gap-4">
+                                {atr && price && stopPrice && (
+                                    <div className="text-center p-3 bg-emerald-950/10 rounded-xl border border-emerald-900/20">
+                                        <div className="text-[9px] text-blue-300/60 uppercase font-black tracking-[0.2em] mb-1">Stop Distance</div>
+                                        <div className="text-xs text-emerald-400 font-mono">{(Math.abs(Number(price) - Number(stopPrice)) / Number(atr)).toFixed(2)} × ATR</div>
+                                    </div>
+                                )}
+                                {adr && positionValue > 0 && principalState > 0 && (
+                                    <div className="text-center p-3 bg-cyan-950/10 rounded-xl border border-cyan-900/20">
+                                        <div className="text-[9px] text-blue-300/60 uppercase font-black tracking-[0.2em] mb-1">WADR Impact</div>
+                                        <div className="text-xs text-cyan-400 font-mono font-bold">
+                                            {((positionValue / principalState) * Number(adr)).toFixed(2)}%
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                     

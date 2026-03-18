@@ -879,24 +879,31 @@ class IBManager:
                 market_price = bars[-1].close
 
             atr = 0.0
-            if bars and len(bars) >= 15:
-                tr_values = []
-                for i in range(1, len(bars)):
-                    tr = max(
-                        bars[i].high - bars[i].low,
-                        abs(bars[i].high - bars[i-1].close),
-                        abs(bars[i].low - bars[i-1].close)
-                    )
-                    tr_values.append(tr)
-                
-                if len(tr_values) >= 14:
+            adr = 0.0
+            if bars and len(bars) >= 2:
+                # Calculate ATR
+                if len(bars) >= 15:
+                    tr_values = []
+                    for i in range(1, len(bars)):
+                        tr = max(
+                            bars[i].high - bars[i].low,
+                            abs(bars[i].high - bars[i-1].close),
+                            abs(bars[i].low - bars[i-1].close)
+                        )
+                        tr_values.append(tr)
                     atr = sum(tr_values[-14:]) / 14
+                
+                # Calculate ADR (20-day)
+                relevant_bars = bars[-20:]
+                if relevant_bars:
+                    adr = 100 * ((sum(b.high / b.low for b in relevant_bars) / len(relevant_bars)) - 1)
             
             return {
                 "status": "success",
                 "symbol": symbol,
                 "price": market_price,
-                "atr": atr
+                "atr": atr,
+                "adr": adr
             }
         except Exception as e:
             logger.error(f"Error in _coro_fetch_ticker_details for {symbol}: {e}")
