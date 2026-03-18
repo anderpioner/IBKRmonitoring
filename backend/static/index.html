@@ -234,8 +234,8 @@
                     {/* Header */}
                     <div className="bg-cyan-500/5 p-7 border-b border-cyan-500/10 flex justify-between items-center relative z-10">
                         <div className="flex items-center gap-4">
-                            <div className="p-2.5 bg-cyan-500/10 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-                                <RawCalculatorIcon className="w-6 h-6 text-cyan-400" />
+                            <div className="p-2.5 bg-cyan-500/10 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                                <RawCalculatorIcon className="w-6 h-6 text-cyan-400/70" />
                             </div>
                             <div className="flex flex-col">
                                 <h2 className="text-xl font-bold text-blue-50 uppercase tracking-[0.2em]">Position Sizer</h2>
@@ -258,7 +258,7 @@
                     <div className="p-8 space-y-8 relative z-10 custom-scrollbar overflow-y-auto" style={{ maxHeight: isStandalone ? 'calc(100vh - 100px)' : 'auto' }}>
                         {/* Principal State */}
                         <div className="flex justify-between items-center bg-blue-950/20 border border-blue-900/20 p-5 rounded-2xl">
-                            <span className="text-[11px] text-cyan-400 uppercase font-black tracking-[0.2em]">Principal State</span>
+                            <span className="text-[11px] text-blue-200/70 uppercase font-black tracking-[0.2em]">Principal State</span>
                             <span className="text-2xl font-light text-cyan-100 tracking-tighter">${Number(principalState || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
 
@@ -278,13 +278,13 @@
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 bg-blue-950/40 rounded-xl p-1 border border-blue-900/20">
                                         <button 
                                             onClick={() => setSide('LONG')}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'LONG' ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.2)] border border-cyan-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'LONG' ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.15)] border border-cyan-500/50' : 'text-slate-500 hover:text-slate-300'}`}
                                         >
                                             LONG
                                         </button>
                                         <button 
                                             onClick={() => setSide('SHORT')}
-                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'SHORT' ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.2)] border border-rose-500/30' : 'text-slate-500 hover:text-slate-300'}`}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all duration-300 active:scale-95 ${side === 'SHORT' ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.15)] border border-rose-500/50' : 'text-slate-500 hover:text-slate-300'}`}
                                         >
                                             SHORT
                                         </button>
@@ -310,7 +310,7 @@
                                         <button 
                                             key={val}
                                             onClick={() => setRisk(val)}
-                                            className={`py-3 rounded-xl border text-[11px] font-black transition-all active:scale-95 ${risk === val ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]' : 'bg-blue-950/5 border-blue-900/10 text-blue-400/60 hover:border-blue-700/40 hover:text-blue-300'}`}
+                                            className={`py-3 rounded-xl border text-[11px] font-black transition-all active:scale-95 ${risk === val ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'bg-blue-950/5 border-blue-900/10 text-blue-400/60 hover:border-blue-700/40 hover:text-blue-300'}`}
                                         >
                                             {val}%
                                         </button>
@@ -346,7 +346,7 @@
                                     <div className="flex justify-between mb-2">
                                         <label className={`text-[10px] uppercase font-black tracking-[0.2em] ${isInvalidStop ? 'text-red-400' : 'text-orange-400'}`}>Stop Price</label>
                                         <span className="text-[11px] text-orange-500/90 uppercase font-black tracking-wider">
-                                            Price {side === 'LONG' ? '-' : '+'} (0.3 × ATR) {atr && price ? (
+                                            Price {side === 'LONG' ? '-' : '+'} (0.3 × ATR) = {atr && price ? (
                                                 <button 
                                                     onClick={() => {
                                                         const val = side === 'LONG' 
@@ -354,10 +354,10 @@
                                                             : (Number(price) + 0.3 * Number(atr));
                                                         setStopPrice(val.toFixed(2));
                                                     }}
-                                                    className="ml-1 text-emerald-400 hover:text-emerald-300 transition-colors border-b border-emerald-400/30 text-xs font-bold"
+                                                    className="ml-1 text-orange-500/90 hover:text-orange-400 transition-colors underline text-xs font-bold"
                                                     title="Click to reset to recommended value"
                                                 >
-                                                    [${(side === 'LONG' ? (Number(price) - 0.3 * Number(atr)) : (Number(price) + 0.3 * Number(atr))).toFixed(2)}]
+                                                    ${(side === 'LONG' ? (Number(price) - 0.3 * Number(atr)) : (Number(price) + 0.3 * Number(atr))).toFixed(2)}
                                                 </button>
                                             ) : ''}
                                         </span>
