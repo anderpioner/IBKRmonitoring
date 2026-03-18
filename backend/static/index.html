@@ -872,6 +872,7 @@
             const [sidebarOpen, setSidebarOpen] = useState(true);
             const [isConfigOpen, setIsConfigOpen] = useState(false);
             const [tradeLogPath, setTradeLogPath] = useState(() => { return localStorage.getItem('tradeLogPath') || "C:\\IBJts\\"; });
+            const [addTgToPs, setAddTgToPs] = useState(() => { const v = localStorage.getItem('addTgToPs'); return v !== null ? JSON.parse(v) : false; });
             const [autoRefresh, setAutoRefresh] = useState(() => { const v = localStorage.getItem('autoRefresh'); return v !== null ? JSON.parse(v) : true; });
             const [refreshInterval, setRefreshInterval] = useState(() => { const v = localStorage.getItem('refreshInterval'); return v ? parseInt(v) : 30; });
             const [baseline, setBaseline] = useState(() => { const v = localStorage.getItem('baseline'); return v ? parseInt(v) : 100000; });
@@ -974,6 +975,7 @@
                 maPeriodRef.current = maPeriod; // Ensure ref is always in sync
             }, [maPeriod]);
             useEffect(() => { localStorage.setItem('tradeLogPath', tradeLogPath); }, [tradeLogPath]);
+            useEffect(() => { localStorage.setItem('addTgToPs', JSON.stringify(addTgToPs)); }, [addTgToPs]);
             const [isSizerOpen, setIsSizerOpen] = useState(false);
 
             // Standalone Mode Detection for Detached Window
@@ -1171,15 +1173,16 @@
                 }
             }
             const buffer = data ? (data.thresholdGains - data.totalPsRisk) : 0;
+            const effPs = data ? (addTgToPs ? data.principalState + data.thresholdGains : data.principalState) : 0;
 
             // Helper to strictly format ALL numbers to exactly 2 decimal places
             const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const pctOfNl = (val) => data && data.principalState ? `${(val / data.principalState * 100).toFixed(2)}% [% of PS]` : null;
+            const pctOfNl = (val) => data && effPs ? `${(val / effPs * 100).toFixed(2)}% [% of PS]` : null;
 
             const getCardValue = (val) => {
                 if (val == null) return "$--";
                 if (isPrivacyMode) {
-                    if (data && data.principalState) return `${(val / data.principalState * 100).toFixed(2)}%`;
+                    if (data && effPs) return `${(val / effPs * 100).toFixed(2)}%`;
                     return "***";
                 }
                 return `$${formatVal(val)}`;
@@ -1570,7 +1573,26 @@
 
                             {/* Row 3 */}
                             <div className="lg:col-span-1">
-                                <StatCard color="blue" title="Principal State [PS]" value={getCardValue(data?.principalState)} subValue={getCardSubValue(data?.principalState)} icon={RawShieldIcon} tooltip={'The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.\n\nFormula: (Cash + Money Allocated) - Open Risk'} />
+                                <StatCard 
+                                    color="blue" 
+                                    title="Principal State [PS]" 
+                                    value={getCardValue(effPs)} 
+                                    subValue={getCardSubValue(effPs)} 
+                                    icon={RawShieldIcon} 
+                                    tooltip={'The "real" value of your account — the money you truly own after subtracting open risk from your cash and allocated capital.\n\nFormula: (Cash + Money Allocated) - Open Risk'} 
+                                    badge={
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setAddTgToPs(!addTgToPs); }}
+                                            title="Include Threshold Gains in Principal State calculations"
+                                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all duration-300 text-[9px] font-black uppercase tracking-widest ${addTgToPs ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-blue-950/40 border-blue-900/30 text-blue-400/50 hover:text-blue-300 hover:border-blue-700/50'}`}
+                                        >
+                                            +TG 
+                                            <div className={`w-5 h-2.5 rounded-full relative transition-all duration-300 ${addTgToPs ? 'bg-cyan-500' : 'bg-slate-700'}`}>
+                                                <div className={`absolute top-[1px] w-2 h-2 bg-white rounded-full transition-all duration-300 ${addTgToPs ? 'right-[1px]' : 'left-[1px]'}`} />
+                                            </div>
+                                        </button>
+                                    }
+                                />
                             </div>
                             <div className="lg:col-span-1">
                                 <StatCard color="blue" title="Cash" value={getCardValue(data?.cash)} subValue={getCardSubValue(data?.cash)} icon={RawBanknoteIcon} tooltip={'Total settled and unsettled cash available in the account.\n\nFormula: API Fetch (CashBalance)'} />
@@ -1647,7 +1669,7 @@
                                                     <td className="px-3 py-4 text-center text-slate-500 font-mono">{isPrivacyMode ? "***" : pos.pos.toLocaleString('en-US')}</td>
                                                     <td className="px-3 py-4 text-center text-slate-500 font-mono">${formatVal(pos.avgCost)}</td>
                                                     <td className="px-3 py-4 text-center text-slate-500 font-mono">{isPrivacyMode ? "***" : `$${formatVal(Math.abs(pos.pos * pos.avgCost))}`}</td>
-                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{data.principalState ? (Math.abs(pos.pos * pos.avgCost) / data.principalState * 100).toFixed(2) + '%' : '--'}</td>
+                                                    <td className="px-3 py-4 text-center text-slate-500 font-mono">{effPs ? (Math.abs(pos.pos * pos.avgCost) / effPs * 100).toFixed(2) + '%' : '--'}</td>
                                                     <td className="px-3 py-4 text-center text-blue-50 font-mono">${formatVal(pos.price)}</td>
                                                     <td className="px-3 py-4 text-center font-mono">
                                                         {pos.stop ? (
@@ -1682,7 +1704,7 @@
 
                         {/* Position Chart */}
                         <PositionChart 
-                            data={data} 
+                            data={data ? {...data, principalState: effPs} : null} 
                             isPrivacyMode={isPrivacyMode} 
                             chartSort={chartSort}
                             setChartSort={setChartSort}
@@ -1852,7 +1874,7 @@
                                                             {isPrivacyMode ? "***" : `$${formatVal(trade.fees)}`}
                                                         </td>
                                                         <td className="px-6 py-4 text-right font-mono text-slate-500">
-                                                            {data.principalState ? `${(trade.pnl / data.principalState * 100).toFixed(2)}%` : '--'}
+                                                            {effPs ? `${(trade.pnl / effPs * 100).toFixed(2)}%` : '--'}
                                                         </td>
                                                     </tr>
                                                 ))
@@ -1925,7 +1947,7 @@
                     <PositionSizerModal 
                         isOpen={isSizerOpen} 
                         onClose={() => setIsSizerOpen(false)} 
-                        principalState={data?.principalState || 0}
+                        principalState={effPs}
                     />
 
                     {/* Config Modal */}
