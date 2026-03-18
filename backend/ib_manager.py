@@ -292,14 +292,21 @@ class IBManager:
                 if not stop_price:
                     logger.debug(f"No stop found for {contract.symbol} (trades checked: {len(active_trades)})")
 
-                if stop_price and ma_value:
-                    effective_exit = stop_price if abs(market_price - stop_price) < abs(market_price - ma_value) else ma_value
-                elif stop_price:
-                    effective_exit = stop_price
-                elif ma_value:
-                    effective_exit = ma_value
-                else:
-                    effective_exit = None
+                # Stop Logic Hierarchy:
+                # 1. If a hard stop order exists and is in the 'red' (principal risk), it takes priority.
+                # 2. Moving Average only takes over once the hard stop is above cost or if no stop order exists.
+                if position > 0: # Long
+                    if stop_price and stop_price < avg_cost:
+                        effective_exit = stop_price
+                    else:
+                        candidates = [c for c in [stop_price, ma_value] if c is not None]
+                        effective_exit = max(candidates) if candidates else None
+                else: # Short
+                    if stop_price and stop_price > avg_cost:
+                        effective_exit = stop_price
+                    else:
+                        candidates = [c for c in [stop_price, ma_value] if c is not None]
+                        effective_exit = min(candidates) if candidates else None
 
                 if stop_price:
                     if (position > 0 and market_price < stop_price) or (position < 0 and market_price > stop_price):
