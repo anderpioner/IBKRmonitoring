@@ -105,6 +105,9 @@ class IBManager:
                 await self._ib.reqAllOpenOrdersAsync()
                 logger.info(f"Open orders loaded: {len(self._ib.openTrades())} trades")
                 
+                # Request auto-open orders to see trades placed by other clients (e.g. manual TWS trades)
+                self._ib.reqAutoOpenOrders(True)
+                
                 # Stabilization Delay: Give the API a moment to be fully ready for queries
                 await asyncio.sleep(1.5)
                 
@@ -272,23 +275,25 @@ class IBManager:
                 total_unrealized_pnl += unrealized_pnl
 
                 stop_price = None
+                stop_count = 0
                 for trade in active_trades:
                     if trade.contract.conId == contract.conId:
-                        ot = trade.order.orderType
-                        if ot in ['STP', 'STP LMT', 'TRAIL', 'TRAIL LIMIT', 'TRAILLMT']:
-                            # Try all possible fields where stop price could live
-                            candidates = [
-                                trade.order.auxPrice,
-                                getattr(trade.order, 'trailStopPrice', None),
-                                getattr(trade.orderStatus, 'lastFillPrice', None),
-                            ]
-                            for c in candidates:
-                                if c and c > 0:
-                                    stop_price = c
-                                    break
-                            if stop_price:
-                                logger.info(f"Stop found for {contract.symbol}: {stop_price} (type={ot})")
-                                break
+                        ot = (trade.order.orderType or "").upper()
+                        if ot in ['STP', 'STP LMT', 'TRAIL', 'TRAIL LIMIT', 'TRAILLMT', 'STOP', 'STOP LIMIT', 'TRAILING STOP', 'TRAIL LMT']:
+                            stop_count += 1
+                            if not stop_price:
+                                # Try all possible fields where stop price could live
+                                candidates = [
+                                    trade.order.auxPrice,
+                                    getattr(trade.order, 'trailStopPrice', None),
+                                    getattr(trade.orderStatus, 'lastFillPrice', None),
+                                ]
+                                for c in candidates:
+                                    if c and c > 0:
+                                        stop_price = c
+                                        break
+                                if stop_price:
+                                    logger.info(f"Stop found for {contract.symbol}: {stop_price} (type={ot})")
                 if not stop_price:
                     logger.debug(f"No stop found for {contract.symbol} (trades checked: {len(active_trades)})")
 
@@ -351,6 +356,7 @@ class IBManager:
                     "price": market_price,
                     "pnl": unrealized_pnl,
                     "stop": stop_price,
+                    "stopCount": stop_count,
                     "ma10": ma10,
                     "ma20": ma20,
                     "adr": adr,
