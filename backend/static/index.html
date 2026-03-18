@@ -495,6 +495,7 @@
         const PositionChart = ({ data, isPrivacyMode, chartSort, setChartSort }) => {
             if (!data || !data.positions || data.positions.length === 0) return null;
 
+            const [hoveredPos, setHoveredPos] = React.useState(null);
             const formatVal = (val) => val == null ? '--' : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             const getChartSortResult = (a, b) => {
@@ -607,7 +608,11 @@
                             <div className="flex items-center gap-6">
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 bg-emerald-400 rounded-sm shadow-[0_0_8px_rgba(52,211,153,0.3)]" />
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Open Profit</span>
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Dynamic Gains</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-cyan-400 rounded-sm shadow-[0_0_8px_rgba(34,211,238,0.3)]" />
+                                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.15em]">Threshold Gains</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 bg-orange-400 rounded-sm shadow-[0_0_8px_rgba(251,146,60,0.3)]" />
@@ -617,38 +622,33 @@
                         </div>
 
 
-                        <div className="flex h-[420px] relative mb-6">
+                        <div className="flex gap-6 h-[420px] relative mb-6">
                             {/* Y-Axis Label */}
                             <div className="absolute -left-2 top-0 bottom-24 flex items-center justify-center">
                                 <span className="text-[10px] font-black text-blue-400/80 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">Exposure ($)</span>
                             </div>
 
-                            <div className="flex-1 flex items-end gap-3 px-2 overflow-x-auto custom-scrollbar pb-24 ml-14">
+                            <div className="flex-1 flex items-end gap-3 px-2 overflow-x-auto custom-scrollbar pb-24 ml-14 pt-8">
                                 {sortedPositions.map((pos) => {
                                     const totalValue = Math.abs((pos.pos || 0) * (pos.price || 0));
                                     const totalRisk = pos.risk || 0;
                                     const openRiskVal = pos.psRisk || 0;
+                                    const tGainVal = pos.tGain || 0;
                                     const profitRiskVal = Math.max(0, totalRisk - openRiskVal);
+                                    const dynamicGainVal = Math.max(0, (pos.pnl || 0) - tGainVal);
                                     
                                     const heightBase = maxVal > 0 ? (totalValue / maxVal) * 100 : 0;
                                     const openRiskPerc = totalValue > 0 ? (openRiskVal / totalValue) * 100 : 0;
-                                    const profitRiskPerc = totalValue > 0 ? (profitRiskVal / totalValue) * 100 : 0;
+                                    const tGainPerc = totalValue > 0 ? (tGainVal / totalValue) * 100 : 0;
+                                    const dynamicGainPerc = totalValue > 0 ? (dynamicGainVal / totalValue) * 100 : 0;
 
                                     return (
-                                        <div key={pos.symbol} className="flex-1 min-w-[60px] max-w-[120px] flex flex-col items-center group relative h-full justify-end">
-                                            {/* Tooltip */}
-                                            <div className="absolute bottom-full mb-3 hidden group-hover:block z-50">
-                                                <div className="bg-slate-900 border border-blue-700/40 text-blue-200/80 text-[10px] p-2.5 rounded-xl shadow-2xl whitespace-nowrap">
-                                                    <div className="font-bold text-blue-50 mb-1.5 border-b border-blue-900/20 pb-1">{pos.symbol}</div>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <div className="flex justify-between gap-4"><span>Value:</span> <span className="text-blue-50 font-mono">{isPrivacyMode ? "***" : `$${formatVal(totalValue)}`}</span></div>
-                                                        <div className="flex justify-between gap-4 text-emerald-400"><span>Profit at Risk:</span> <span className="font-mono">{isPrivacyMode ? "***" : `$${formatVal(profitRiskVal)}`}</span></div>
-                                                        <div className="flex justify-between gap-4 text-orange-400"><span>Open Risk (Principal):</span> <span className="font-mono">{isPrivacyMode ? "***" : `$${formatVal(openRiskVal)}`}</span></div>
-                                                        <div className="flex justify-between gap-4 pt-1 mt-1 border-t border-blue-900/30"><span>Total Risk:</span> <span className="text-blue-400 font-mono">{isPrivacyMode ? "***" : `$${formatVal(totalRisk)}`}</span></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
+                                        <div 
+                                            key={pos.symbol} 
+                                            className="flex-1 min-w-[60px] max-w-[120px] flex flex-col items-center group relative h-full justify-end"
+                                            onMouseEnter={() => setHoveredPos(pos)}
+                                            onMouseLeave={() => setHoveredPos(null)}
+                                        >
                                             {/* % of PS Label */}
                                             {data.principalState > 0 && (
                                                 <div className="mb-2 text-[12px] font-mono text-blue-400/50 whitespace-nowrap">
@@ -657,10 +657,12 @@
                                             )}
 
                                             {/* Bar Container */}
-                                            <div className="w-full relative flex flex-col justify-end overflow-hidden rounded-t-lg bg-blue-600/10 border border-blue-900/20 hover:border-blue-500/40 transition-all cursor-pointer group-hover:scale-[1.02]" style={{ height: `${Math.max(5, (heightBase * 0.85))}%` }}>
-                                                {/* Profit Segment (Gains at risk) - TOP */}
-                                                <div className="w-full bg-emerald-400/90" style={{ height: `${profitRiskPerc}%` }} />
-                                                {/* Open Risk Segment (Principal at risk) - MIDDLE */}
+                                            <div className="w-full relative flex flex-col justify-end rounded-t-lg bg-blue-600/10 border border-blue-900/20 hover:border-blue-500/40 transition-all cursor-pointer group-hover:scale-[1.02]" style={{ height: `${Math.max(5, (heightBase * 0.95))}%` }}>
+                                                {/* Dynamic Gains (at risk) - TOP */}
+                                                <div className="w-full bg-emerald-400/90 rounded-t-lg" style={{ height: `${dynamicGainPerc}%` }} />
+                                                {/* Threshold Gains (protected) - MIDDLE-TOP */}
+                                                <div className="w-full bg-cyan-400" style={{ height: `${tGainPerc}%` }} />
+                                                {/* Open Risk Segment (Principal at risk) - MIDDLE-BOTTOM */}
                                                 <div className="w-full bg-orange-500/90 shadow-[0_0_10px_rgba(249,115,22,0.2)]" style={{ height: `${openRiskPerc}%` }} />
                                                 {/* Base / Safe Segment - BOTTOM */}
                                                 <div className="w-full bg-blue-600/20 flex-1" />
@@ -679,6 +681,55 @@
                                         </div>
                                     );
                                 })}
+                            </div>
+
+                            {/* Fixed Detail Box */}
+                            <div className="w-64 hidden xl:flex flex-col justify-end pb-24 pt-8">
+                                {hoveredPos ? (() => {
+                                    const totalValue = Math.abs((hoveredPos.pos || 0) * (hoveredPos.price || 0));
+                                    const openRiskVal = hoveredPos.psRisk || 0;
+                                    const tGainVal = hoveredPos.tGain || 0;
+                                    const dynamicGainVal = Math.max(0, (hoveredPos.pnl || 0) - tGainVal);
+                                    const totalRisk = hoveredPos.risk || 0;
+
+                                    return (
+                                        <div className="bg-slate-950/95 border border-blue-500/30 backdrop-blur-md p-5 rounded-3xl shadow-2xl h-full flex flex-col justify-center animate-in fade-in duration-300">
+                                            <div className="font-black text-blue-50 mb-3 border-b border-blue-900/40 pb-2 flex justify-between uppercase tracking-[0.2em] text-[12px]">
+                                                {hoveredPos.symbol} 
+                                                <span className="text-blue-400/60 font-mono">#{hoveredPos.pos}</span>
+                                            </div>
+                                            <div className="flex flex-col gap-2.5">
+                                                <div className="flex justify-between items-center text-[11px] text-blue-100/80">
+                                                    <span className="uppercase tracking-wider">Total Value:</span> 
+                                                    <span className="font-mono font-black">{isPrivacyMode ? "***" : `$${formatVal(totalValue)}`}</span>
+                                                </div>
+                                                <div className="h-px bg-blue-900/20 my-1" />
+                                                <div className="flex justify-between items-center text-[11px] text-emerald-400">
+                                                    <span className="uppercase tracking-wider">Dynamic Gains:</span> 
+                                                    <span className="font-mono font-black">{isPrivacyMode ? "***" : `$${formatVal(dynamicGainVal)}`}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[11px] text-cyan-400">
+                                                    <span className="uppercase tracking-wider">Threshold:</span> 
+                                                    <span className="font-mono font-black">{isPrivacyMode ? "***" : `$${formatVal(tGainVal)}`}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[11px] text-orange-400">
+                                                    <span className="uppercase tracking-wider">Open Risk (PS):</span> 
+                                                    <span className="font-mono font-black">{isPrivacyMode ? "***" : `$${formatVal(openRiskVal)}`}</span>
+                                                </div>
+                                                <div className="h-px bg-blue-900/20 my-1" />
+                                                <div className="flex justify-between items-center text-[12px] text-blue-300 font-black">
+                                                    <span className="uppercase tracking-[0.2em]">Total Risk:</span> 
+                                                    <span className="font-mono">{isPrivacyMode ? "***" : `$${formatVal(totalRisk)}`}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })() : (
+                                    <div className="bg-blue-950/20 border border-blue-900/10 text-blue-400/20 text-[10px] p-5 rounded-3xl h-full flex flex-col items-center justify-center italic text-center uppercase tracking-[0.3em] font-black">
+                                        <RawInfoIcon className="w-6 h-6 mb-3 opacity-10" />
+                                        Hover bar<br/>for details
+                                    </div>
+                                )}
                             </div>
 
                             {/* X-Axis Label */}
