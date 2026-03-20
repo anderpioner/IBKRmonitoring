@@ -1,4 +1,16 @@
+# Release Notes - v0.0.13
+
+**Release Date:** March 20, 2026
+
+## 🎨 UI Refinement & Sidebar Cleanup
+* **Simplified Sidebar:** Removed the "Menu" section (Dashboard and Trade Analytics buttons) to reduce visual clutter and focus on core risk metrics.
+* **Header Optimization:** Removed the "App Configuration" gear icon from the sidebar header for a sleeker, more streamlined navigation experience.
+* **Persistent Layout:** Core dashboard functionality remains fully accessible with more screen real estate.
+
+---
+
 # Release Notes - v0.0.12
+
 
 **Release Date:** March 13, 2026
 
