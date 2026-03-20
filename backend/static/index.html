@@ -1243,31 +1243,13 @@
                                 </div>
                                 <span className={`font-bold text-lg tracking-tight text-blue-50 uppercase italic whitespace-nowrap transition-all duration-200 ${sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'}`}>Navigator</span>
                             </div>
-                            <button 
-                                onClick={() => setIsConfigOpen(true)}
-                                title="App Configuration"
-                                className={`p-1.5 rounded-lg text-blue-400/50 hover:text-blue-300 hover:bg-blue-900/30 transition-all duration-300 active:scale-95 group flex-shrink-0 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none absolute right-4'}`}
-                            >
-                                <RawSettingsIcon className="w-5 h-5 group-hover:rotate-45 transition-transform duration-300" />
-                            </button>
+
                         </div>
 
                         {/* Content — full when open */}
                         <div className={`transition-all duration-200 overflow-y-auto overflow-x-hidden custom-scrollbar flex-grow ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                             <div className="p-4 space-y-6">
-                                <div className="space-y-2 px-1">
-                                    <label className="text-[11px] text-blue-300/60 uppercase font-black tracking-[0.15em]">Menu</label>
-                                    <div className="flex flex-col gap-1 pt-1">
-                                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-50 font-bold text-[12px] tracking-wider uppercase shadow-[0_0_15px_rgba(37,99,235,0.15)] transition-all">
-                                            <RawLayoutIcon className="w-5 h-5 text-blue-400" />
-                                            Dashboard
-                                        </button>
-                                        <button className="w-full flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent rounded-xl text-blue-500 hover:text-blue-400 hover:bg-blue-900/20 hover:border-blue-800/30 font-bold text-[12px] tracking-wider uppercase transition-all">
-                                            <RawPieChartIcon className="w-5 h-5 text-blue-500" />
-                                            Trade Analytics
-                                        </button>
-                                    </div>
-                                </div>
+
                                 <div className="space-y-1 px-1">
                                     <label className="text-[11px] text-blue-300/60 uppercase font-black tracking-[0.15em]">Baseline ($)</label>
                                     <input type="number" value={baseline} onChange={(e) => setBaseline(e.target.value)} className="w-full bg-blue-950/20 rounded-xl p-3 border border-blue-900/20 text-blue-50 font-bold focus:ring-1 focus:ring-blue-500/40 outline-none text-md transition-all duration-300" />
